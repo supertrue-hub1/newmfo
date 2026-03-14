@@ -3,12 +3,9 @@
  * Централизованное хранение данных для страниц категорий
  */
 
-import { 
-  CreditCard, ShieldCheck, AlertTriangle, Percent, 
-  Clock, Moon, Users, Wallet, type LucideIcon 
-} from 'lucide-react';
-
 export type CategorySlug = 'na-kartu' | 'bez-otkaza' | 'bez-proverki-ki' | 'bez-procentov';
+
+export type ScenarioIconName = 'clock' | 'percent' | 'shield-check' | 'wallet' | 'alert-triangle' | 'users' | 'credit-card';
 
 export interface CategoryConfig {
   slug: CategorySlug;
@@ -58,7 +55,7 @@ export interface FaqItem {
 
 export interface ScenarioItem {
   id: string;
-  icon: LucideIcon;
+  icon: ScenarioIconName;
   label: string;
   description: string;
   filter: Record<string, unknown>;
@@ -158,28 +155,28 @@ export const CATEGORY_CONFIG: Record<CategorySlug, CategoryConfig> = {
     scenarios: [
       {
         id: 'urgent',
-        icon: Clock,
+        icon: 'clock',
         label: 'Срочно',
         description: 'Решение за 5 минут',
         filter: { maxDecisionTime: 15 },
       },
       {
         id: 'zero',
-        icon: Percent,
+        icon: 'percent',
         label: 'Под 0%',
         description: 'Первый займ бесплатно',
         filter: { firstLoanRate: 0 },
       },
       {
         id: 'bad-credit',
-        icon: ShieldCheck,
+        icon: 'shield-check',
         label: 'Плохая КИ',
         description: 'Без проверки БКИ',
         filter: { badCreditOk: true },
       },
       {
         id: 'small',
-        icon: Wallet,
+        icon: 'wallet',
         label: 'До 10 000 ₽',
         description: 'Небольшая сумма',
         filter: { maxAmount: 10000 },
@@ -279,28 +276,28 @@ export const CATEGORY_CONFIG: Record<CategorySlug, CategoryConfig> = {
     scenarios: [
       {
         id: 'high-approval',
-        icon: ShieldCheck,
+        icon: 'shield-check',
         label: 'До 97%',
         description: 'Максимальное одобрение',
         filter: { minApprovalRate: 90 },
       },
       {
         id: 'no-docs',
-        icon: Wallet,
+        icon: 'wallet',
         label: 'Только паспорт',
         description: 'Без справок',
         filter: { documents: ['passport'] },
       },
       {
         id: 'bad-credit',
-        icon: AlertTriangle,
+        icon: 'alert-triangle',
         label: 'С долгами',
         description: 'Открытые просрочки',
         filter: { badCreditOk: true },
       },
       {
         id: 'fast',
-        icon: Clock,
+        icon: 'clock',
         label: 'За 15 минут',
         description: 'Быстрое решение',
         filter: { maxDecisionTime: 15 },
@@ -398,28 +395,28 @@ export const CATEGORY_CONFIG: Record<CategorySlug, CategoryConfig> = {
     scenarios: [
       {
         id: 'no-check',
-        icon: ShieldCheck,
+        icon: 'shield-check',
         label: 'Без запроса БКИ',
         description: 'Никаких проверок',
         filter: { noCreditCheck: true },
       },
       {
         id: 'bad-ki',
-        icon: AlertTriangle,
+        icon: 'alert-triangle',
         label: 'С плохой КИ',
         description: 'Одобряют с долгами',
         filter: { badCreditOk: true },
       },
       {
         id: 'improve',
-        icon: Users,
+        icon: 'users',
         label: 'Улучшить КИ',
         description: 'Для исправления истории',
         filter: { reportsToBki: true },
       },
       {
         id: 'no-docs',
-        icon: Wallet,
+        icon: 'wallet',
         label: 'Только паспорт',
         description: 'Минимум документов',
         filter: { documents: ['passport'] },
@@ -518,28 +515,28 @@ export const CATEGORY_CONFIG: Record<CategorySlug, CategoryConfig> = {
     scenarios: [
       {
         id: 'zero-30',
-        icon: Percent,
+        icon: 'percent',
         label: '0% до 30 дней',
         description: 'Максимальный срок',
         filter: { firstLoanRate: 0, maxTerm: 30 },
       },
       {
         id: 'zero-big',
-        icon: Wallet,
+        icon: 'wallet',
         label: 'До 30 000 ₽',
         description: 'Крупная сумма',
         filter: { firstLoanRate: 0, minMaxAmount: 30000 },
       },
       {
         id: 'zero-fast',
-        icon: Clock,
+        icon: 'clock',
         label: 'Мгновенно',
         description: 'За 5 минут',
         filter: { firstLoanRate: 0, maxDecisionTime: 5 },
       },
       {
         id: 'zero-card',
-        icon: CreditCard,
+        icon: 'credit-card',
         label: 'На карту',
         description: 'Моментально',
         filter: { firstLoanRate: 0, payoutMethod: 'card' },

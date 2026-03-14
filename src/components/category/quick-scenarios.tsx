@@ -1,8 +1,19 @@
 'use client';
 
 import * as React from 'react';
+import { Clock, Percent, ShieldCheck, Wallet, AlertTriangle, Users, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ScenarioItem } from '@/lib/category/category-config';
+import type { ScenarioItem, ScenarioIconName } from '@/lib/category/category-config';
+
+const ICON_MAP: Record<ScenarioIconName, React.ComponentType<{ className?: string }>> = {
+  'clock': Clock,
+  'percent': Percent,
+  'shield-check': ShieldCheck,
+  'wallet': Wallet,
+  'alert-triangle': AlertTriangle,
+  'users': Users,
+  'credit-card': CreditCard,
+};
 
 interface QuickScenariosProps {
   scenarios: ScenarioItem[];
@@ -20,7 +31,7 @@ export function QuickScenarios({ scenarios, activeId, onSelect }: QuickScenarios
         
         <div className="flex flex-wrap gap-2 sm:gap-3">
           {scenarios.map((scenario) => {
-            const Icon = scenario.icon;
+            const Icon = ICON_MAP[scenario.icon];
             const isActive = activeId === scenario.id;
             
             return (
