@@ -1,0 +1,214 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User Management
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("editor") // admin, editor, viewer
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  auditLogs AuditLog[]
+}
+
+// ============================================
+// Loan Offers (Core Business)
+// ============================================
+
+model LoanOffer {
+  id        String   @id @default(cuid())
+  externalId String? // ID from external API (Leads.su, etc.)
+  
+  // Basic Info
+  name        String
+  slug        String   @unique
+  logo        String?
+  rating      Float    @default(4.5)
+  
+  // Loan Terms (from API - read only after sync)
+  minAmount   Int      @default(1000)
+  maxAmount   Int      @default(30000)
+  minTerm     Int      @default(7)
+  maxTerm     Int      @default(30)
+  baseRate    Float    @default(0.8)
+  firstLoanRate Float?
+  decisionTime Int     @default(5) // minutes, 0 = instant
+  approvalRate Int     @default(90)
+  
+  // Features (JSON array)
+  features    String?  // JSON: ["first_loan_zero", "prolongation", ...]
+  payoutMethods String? // JSON: ["card", "yoomoney", ...]
+  
+  // Requirements
+  badCreditOk  Boolean @default(true)
+  noCalls      Boolean @default(true)
+  roundTheClock Boolean @default(false)
+  minAge       Int     @default(18)
+  documents    String? // JSON: ["passport", "inn", ...]
+  
+  // Partner Settings
+  affiliateUrl String?
+  affiliateId  String?
+  
+  // SEO Fields (editable by editors)
+  metaTitle       String?
+  metaDescription String?
+  customDescription String? // Custom description for SEO
+  
+  // Status & Visibility
+  status         String   @default("draft") // draft, published, archived
+  isFeatured     Boolean  @default(false)
+  isNew          Boolean  @default(false)
+  isPopular      Boolean  @default(false)
+  showOnHomepage Boolean  @default(true)
+  sortOrder      Int      @default(10)
+  
+  // Sync Status
+  syncSource     String?  // "Leads.su", "Admitad", etc.
+  lastSyncAt     DateTime?
+  syncStatus     String   @default("pending") // synced, pending, error
+  requiresReview Boolean  @default(false) // Anomaly detection flag
+  reviewReason   String?  // Reason for review flag
+  
+  // Analytics (cached)
+  viewsCount     Int      @default(0)
+  clicksCount    Int      @default(0)
+  conversionsCount Int    @default(0)
+  
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  publishedAt    DateTime?
+  
+  // Relations
+  auditLogs   AuditLog[]
+  tags        OfferTag[]
+  syncHistory SyncLog[]
+}
+
+// ============================================
+// Tags for Offers
+// ============================================
+
+model Tag {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  color       String?  // hex color
+  createdAt   DateTime @default(now())
+  
+  offers      OfferTag[]
+}
+
+model OfferTag {
+  offerId String
+  tagId   String
+  
+  offer   LoanOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  tag     Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@id([offerId, tagId])
+}
+
+// ============================================
+// Audit Log (Operational Excellence)
+// ============================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  
+  // Who made the change
+  userId      String?
+  userEmail   String?  // Denormalized for quick access
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  // What changed
+  offerId     String
+  offer       LoanOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  
+  // Change details
+  action      String   // CREATE, UPDATE, DELETE, SYNC, BULK_UPDATE
+  fieldName   String?  // Which field was changed
+  oldValue    String?  // JSON or string representation
+  newValue    String?  // JSON or string representation
+  
+  // Context
+  source      String   @default("admin") // admin, api_sync, bulk_action
+  ipAddress   String?
+  userAgent   String?
+  
+  // Metadata
+  metadata    String?  // JSON for additional info
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([offerId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ============================================
+// Sync Logs (API Integration)
+// ============================================
+
+model SyncLog {
+  id              String   @id @default(cuid())
+  
+  // Sync info
+  source          String   // "Leads.su", "Admitad", etc.
+  status          String   // success, partial, error
+  
+  // Statistics
+  offersProcessed Int      @default(0)
+  offersUpdated   Int      @default(0)
+  offersAdded     Int      @default(0)
+  offersUnchanged Int      @default(0)
+  errors          Int      @default(0)
+  
+  // Timing
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  durationMs      Int?     // Duration in milliseconds
+  
+  // Details
+  errorMessage    String?
+  errorDetails    String?  // JSON with error details
+  
+  // Relations
+  offerId         String?
+  offer           LoanOffer? @relation(fields: [offerId], references: [id])
+  
+  @@index([source])
+  @@index([status])
+  @@index([startedAt])
+}
+
+// ============================================
+// SEO Templates
+// ============================================
+
+model SeoTemplate {
+  id          String   @id @default(cuid())
+  name        String   // "Default Offer Description", "Meta Title", etc.
+  type        String   // "description", "meta_title", "meta_description"
+  template    String   // Template with placeholders like {{name}}, {{minAmount}}, etc.
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
