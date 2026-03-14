@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Settings, Globe, Bell, Shield, Database, Palette } from "lucide-react"
+import { Settings, Globe, Bell, Shield, Database, Palette, Save, Loader2 } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,8 +17,145 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/hooks/use-toast"
+
+interface Settings {
+  // General
+  siteName: string
+  siteUrl: string
+  adminEmail: string
+  
+  // SEO
+  metaTitle: string
+  metaDescription: string
+  indexationEnabled: boolean
+  
+  // API
+  leadsApiKey: string
+  admitadApiKey: string
+  testMode: boolean
+  
+  // Notifications
+  emailNotifications: boolean
+  syncErrors: boolean
+  newConversions: boolean
+  weeklyReport: boolean
+  
+  // Security
+  twoFactorAuth: boolean
+  sessionDuration: string
+  actionLogging: boolean
+  
+  // Appearance
+  defaultTheme: string
+  accentColor: string
+  compactMode: boolean
+}
+
+const defaultSettings: Settings = {
+  siteName: "cashpeek",
+  siteUrl: "https://cashpeek.ru",
+  adminEmail: "admin@cashpeek.ru",
+  metaTitle: "cashpeek — Сравнить займы онлайн",
+  metaDescription: "Сравните условия проверенных МФО. Займы онлайн под 0% для новых клиентов.",
+  indexationEnabled: true,
+  leadsApiKey: "",
+  admitadApiKey: "",
+  testMode: false,
+  emailNotifications: true,
+  syncErrors: true,
+  newConversions: true,
+  weeklyReport: false,
+  twoFactorAuth: false,
+  sessionDuration: "24h",
+  actionLogging: true,
+  defaultTheme: "system",
+  accentColor: "primary",
+  compactMode: false,
+}
 
 export default function SettingsPage() {
+  const { toast } = useToast()
+  const [settings, setSettings] = React.useState<Settings>(defaultSettings)
+  const [loading, setLoading] = React.useState(true)
+  const [saving, setSaving] = React.useState<string | null>(null)
+
+  // Load settings on mount
+  React.useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings')
+        if (res.ok) {
+          const data = await res.json()
+          // Parse boolean values
+          const parsed: Partial<Settings> = {}
+          Object.keys(data).forEach(key => {
+            const value = data[key]
+            if (value === 'true') parsed[key as keyof Settings] = true as any
+            else if (value === 'false') parsed[key as keyof Settings] = false as any
+            else parsed[key as keyof Settings] = value
+          })
+          setSettings(prev => ({ ...prev, ...parsed }))
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadSettings()
+  }, [])
+
+  // Save settings by category
+  const saveSettings = async (category: string, keys: (keyof Settings)[]) => {
+    setSaving(category)
+    try {
+      const settingsToSave: Record<string, { value: string; category: string }> = {}
+      keys.forEach(key => {
+        const value = settings[key]
+        settingsToSave[key] = {
+          value: String(value),
+          category,
+        }
+      })
+
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: settingsToSave }),
+      })
+
+      if (res.ok) {
+        toast({
+          title: "Сохранено",
+          description: "Настройки успешно обновлены",
+        })
+      } else {
+        throw new Error('Failed to save')
+      }
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось сохранить настройки",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
+    setSettings(prev => ({ ...prev, [key]: value }))
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Заголовок */}
@@ -44,17 +181,40 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="site-name">Название сайта</Label>
-              <Input id="site-name" defaultValue="cashpeek" />
+              <Input 
+                id="site-name" 
+                value={settings.siteName}
+                onChange={(e) => updateSetting('siteName', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="site-url">URL сайта</Label>
-              <Input id="site-url" defaultValue="https://cashpeek.ru" />
+              <Input 
+                id="site-url" 
+                value={settings.siteUrl}
+                onChange={(e) => updateSetting('siteUrl', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="admin-email">Email администратора</Label>
-              <Input id="admin-email" type="email" defaultValue="admin@cashpeek.ru" />
+              <Input 
+                id="admin-email" 
+                type="email" 
+                value={settings.adminEmail}
+                onChange={(e) => updateSetting('adminEmail', e.target.value)}
+              />
             </div>
-            <Button>Сохранить изменения</Button>
+            <Button 
+              onClick={() => saveSettings('general', ['siteName', 'siteUrl', 'adminEmail'])}
+              disabled={saving === 'general'}
+            >
+              {saving === 'general' ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Сохранить изменения
+            </Button>
           </CardContent>
         </Card>
 
@@ -72,13 +232,18 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="meta-title">Meta Title</Label>
-              <Input id="meta-title" defaultValue="cashpeek — Сравнить займы онлайн" />
+              <Input 
+                id="meta-title" 
+                value={settings.metaTitle}
+                onChange={(e) => updateSetting('metaTitle', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="meta-description">Meta Description</Label>
               <Textarea 
                 id="meta-description" 
-                defaultValue="Сравните условия проверенных МФО. Займы онлайн под 0% для новых клиентов."
+                value={settings.metaDescription}
+                onChange={(e) => updateSetting('metaDescription', e.target.value)}
                 rows={3}
               />
             </div>
@@ -89,9 +254,22 @@ export default function SettingsPage() {
                   Разрешить индексацию сайта
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={settings.indexationEnabled}
+                onCheckedChange={(checked) => updateSetting('indexationEnabled', checked)}
+              />
             </div>
-            <Button>Сохранить изменения</Button>
+            <Button 
+              onClick={() => saveSettings('seo', ['metaTitle', 'metaDescription', 'indexationEnabled'])}
+              disabled={saving === 'seo'}
+            >
+              {saving === 'seo' ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Сохранить изменения
+            </Button>
           </CardContent>
         </Card>
 
@@ -112,7 +290,9 @@ export default function SettingsPage() {
               <Input 
                 id="leads-api" 
                 type="password" 
-                defaultValue="sk_live_xxxxxxxxxxxxx" 
+                value={settings.leadsApiKey}
+                onChange={(e) => updateSetting('leadsApiKey', e.target.value)}
+                placeholder="Введите API ключ"
               />
             </div>
             <div className="space-y-2">
@@ -120,7 +300,9 @@ export default function SettingsPage() {
               <Input 
                 id="admitad-api" 
                 type="password" 
-                placeholder="Введите API ключ" 
+                value={settings.admitadApiKey}
+                onChange={(e) => updateSetting('admitadApiKey', e.target.value)}
+                placeholder="Введите API ключ"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -130,9 +312,22 @@ export default function SettingsPage() {
                   Использовать тестовый API
                 </p>
               </div>
-              <Switch />
+              <Switch 
+                checked={settings.testMode}
+                onCheckedChange={(checked) => updateSetting('testMode', checked)}
+              />
             </div>
-            <Button>Сохранить изменения</Button>
+            <Button 
+              onClick={() => saveSettings('api', ['leadsApiKey', 'admitadApiKey', 'testMode'])}
+              disabled={saving === 'api'}
+            >
+              {saving === 'api' ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Сохранить изменения
+            </Button>
           </CardContent>
         </Card>
 
@@ -155,7 +350,10 @@ export default function SettingsPage() {
                   Получать уведомления на email
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={settings.emailNotifications}
+                onCheckedChange={(checked) => updateSetting('emailNotifications', checked)}
+              />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -165,7 +363,10 @@ export default function SettingsPage() {
                   Уведомлять об ошибках API
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={settings.syncErrors}
+                onCheckedChange={(checked) => updateSetting('syncErrors', checked)}
+              />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -174,7 +375,10 @@ export default function SettingsPage() {
                   Уведомлять о новых конверсиях
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={settings.newConversions}
+                onCheckedChange={(checked) => updateSetting('newConversions', checked)}
+              />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -183,8 +387,22 @@ export default function SettingsPage() {
                   Получать сводку каждую неделю
                 </p>
               </div>
-              <Switch />
+              <Switch 
+                checked={settings.weeklyReport}
+                onCheckedChange={(checked) => updateSetting('weeklyReport', checked)}
+              />
             </div>
+            <Button 
+              onClick={() => saveSettings('notifications', ['emailNotifications', 'syncErrors', 'newConversions', 'weeklyReport'])}
+              disabled={saving === 'notifications'}
+            >
+              {saving === 'notifications' ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Сохранить изменения
+            </Button>
           </CardContent>
         </Card>
 
@@ -207,12 +425,18 @@ export default function SettingsPage() {
                   Дополнительная защита аккаунта
                 </p>
               </div>
-              <Switch />
+              <Switch 
+                checked={settings.twoFactorAuth}
+                onCheckedChange={(checked) => updateSetting('twoFactorAuth', checked)}
+              />
             </div>
             <Separator />
             <div className="space-y-2">
               <Label>Срок действия сессии</Label>
-              <Select defaultValue="24h">
+              <Select 
+                value={settings.sessionDuration}
+                onValueChange={(value) => updateSetting('sessionDuration', value)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -232,9 +456,25 @@ export default function SettingsPage() {
                   Записывать все действия в лог
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={settings.actionLogging}
+                onCheckedChange={(checked) => updateSetting('actionLogging', checked)}
+              />
             </div>
-            <Button variant="destructive">Сменить пароль</Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => saveSettings('security', ['twoFactorAuth', 'sessionDuration', 'actionLogging'])}
+                disabled={saving === 'security'}
+              >
+                {saving === 'security' ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Сохранить
+              </Button>
+              <Button variant="destructive">Сменить пароль</Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -252,7 +492,10 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Тема по умолчанию</Label>
-              <Select defaultValue="system">
+              <Select 
+                value={settings.defaultTheme}
+                onValueChange={(value) => updateSetting('defaultTheme', value)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -266,11 +509,26 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label>Акцентный цвет</Label>
               <div className="flex gap-2">
-                <div className="w-8 h-8 rounded-full bg-primary cursor-pointer ring-2 ring-primary ring-offset-2" />
-                <div className="w-8 h-8 rounded-full bg-blue-500 cursor-pointer" />
-                <div className="w-8 h-8 rounded-full bg-green-500 cursor-pointer" />
-                <div className="w-8 h-8 rounded-full bg-purple-500 cursor-pointer" />
-                <div className="w-8 h-8 rounded-full bg-orange-500 cursor-pointer" />
+                <button 
+                  className={`w-8 h-8 rounded-full bg-primary cursor-pointer ${settings.accentColor === 'primary' ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                  onClick={() => updateSetting('accentColor', 'primary')}
+                />
+                <button 
+                  className={`w-8 h-8 rounded-full bg-blue-500 cursor-pointer ${settings.accentColor === 'blue' ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+                  onClick={() => updateSetting('accentColor', 'blue')}
+                />
+                <button 
+                  className={`w-8 h-8 rounded-full bg-green-500 cursor-pointer ${settings.accentColor === 'green' ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}
+                  onClick={() => updateSetting('accentColor', 'green')}
+                />
+                <button 
+                  className={`w-8 h-8 rounded-full bg-purple-500 cursor-pointer ${settings.accentColor === 'purple' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}`}
+                  onClick={() => updateSetting('accentColor', 'purple')}
+                />
+                <button 
+                  className={`w-8 h-8 rounded-full bg-orange-500 cursor-pointer ${settings.accentColor === 'orange' ? 'ring-2 ring-orange-500 ring-offset-2' : ''}`}
+                  onClick={() => updateSetting('accentColor', 'orange')}
+                />
               </div>
             </div>
             <div className="flex items-center justify-between">
@@ -280,8 +538,22 @@ export default function SettingsPage() {
                   Уменьшить отступы в таблицах
                 </p>
               </div>
-              <Switch />
+              <Switch 
+                checked={settings.compactMode}
+                onCheckedChange={(checked) => updateSetting('compactMode', checked)}
+              />
             </div>
+            <Button 
+              onClick={() => saveSettings('appearance', ['defaultTheme', 'accentColor', 'compactMode'])}
+              disabled={saving === 'appearance'}
+            >
+              {saving === 'appearance' ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Сохранить изменения
+            </Button>
           </CardContent>
         </Card>
       </div>
