@@ -7,12 +7,38 @@ import { generateCityMetadata, generateBreadcrumb } from '@/lib/seo/metadata';
 import { SimpleOfferCard } from '@/lib/adapters/offer-adapter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, MapPin, CreditCard, Clock, Star } from 'lucide-react';
+import { ChevronRight, MapPin, CreditCard, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { cache } from 'react';
 
+// Кэшируем запрос к БД
+const getLoansByCity = cache(async () => {
+  return db.loanOffer.findMany({
+    where: { status: 'published' },
+    orderBy: { rating: 'desc' },
+    take: 30,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      logo: true,
+      rating: true,
+      minAmount: true,
+      maxAmount: true,
+      minTerm: true,
+      maxTerm: true,
+      baseRate: true,
+      firstLoanRate: true,
+      decisionTime: true,
+      approvalRate: true,
+      features: true,
+      customDescription: true,
+    },
+  });
+});
+  
 export const revalidate = 3600;
 export const dynamicParams = true;
-export const dynamic = 'force-static';
 
 export async function generateStaticParams() {
   return Object.keys(CITIES).map(city => ({ city }));
@@ -32,18 +58,6 @@ export async function generateMetadata({
   return generateCityMetadata(city as CitySlug);
 }
 
-async function getLoansByCity(citySlug: CitySlug) {
-  const city = CITIES[citySlug];
-  
-  const offers = await db.loanOffer.findMany({
-    where: { status: 'published' },
-    orderBy: { rating: 'desc' },
-    take: 30,
-  });
-  
-  return { offers, city };
-}
-
 export default async function CityPage({ 
   params 
 }: { 
@@ -56,7 +70,7 @@ export default async function CityPage({
   }
   
   const city = CITIES[citySlug as CitySlug];
-  const { offers } = await getLoansByCity(citySlug as CitySlug);
+  const offers = await getLoansByCity();
   
   const breadcrumb = [
     { name: 'Главная', url: '/' },
