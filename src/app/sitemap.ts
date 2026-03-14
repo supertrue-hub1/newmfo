@@ -3,82 +3,100 @@ import { db } from '@/lib/db';
 import { LOAN_CATEGORIES, CITIES, AMOUNTS } from '@/lib/seo/slugs';
 
 const BASE_URL = 'https://cashpeek.ru';
+const MAX_URLS_PER_SITEMAP = 45000;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const urls: MetadataRoute.Sitemap = [];
   const now = new Date();
 
-  // === ГЛАВНЫЕ СТРАНИЦЫ ===
-  urls.push({
-    url: BASE_URL,
-    lastModified: now,
-    changeFrequency: 'daily',
-    priority: 1,
+  // === HIGH PRIORITY STATIC PAGES ===
+  const staticPages = [
+    { url: '/', priority: 1.0, changefreq: 'daily' as const },
+    { url: '/zaimy', priority: 0.95, changefreq: 'daily' as const },
+    { url: '/sravnit', priority: 0.9, changefreq: 'daily' as const },
+    { url: '/mfo', priority: 0.9, changefreq: 'daily' as const },
+    { url: '/blog', priority: 0.8, changefreq: 'daily' as const },
+  ];
+
+  staticPages.forEach(page => {
+    urls.push({
+      url: `${BASE_URL}${page.url}`,
+      lastModified: now,
+      changeFrequency: page.changefreq,
+      priority: page.priority,
+    });
   });
 
-  urls.push({
-    url: `${BASE_URL}/sravnit`,
-    lastModified: now,
-    changeFrequency: 'daily',
-    priority: 0.9,
-  });
-
-  urls.push({
-    url: `${BASE_URL}/blog`,
-    lastModified: now,
-    changeFrequency: 'daily',
-    priority: 0.8,
-  });
-
-  // === КАТЕГОРИИ ЗАЙМОВ ===
-  Object.entries(LOAN_CATEGORIES).forEach(([slug, category]) => {
+  // === CATEGORIES ===
+  Object.keys(LOAN_CATEGORIES).forEach(slug => {
     urls.push({
       url: `${BASE_URL}/zaimy/${slug}`,
       lastModified: now,
-      changeFrequency: 'daily',
-      priority: 0.9,
+      changeFrequency: 'weekly' as const,
+      priority: 0.85,
     });
+  });
 
-    // Категория + каждый город
+  // === CITIES (top 15) ===
+  Object.keys(CITIES).slice(0, 15).forEach(slug => {
+    urls.push({
+      url: `${BASE_URL}/zaimy/v-${slug}`,
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.8,
+    });
+  });
+
+  // === CATEGORY + CITY (150 pages) ===
+  Object.keys(LOAN_CATEGORIES).forEach(catSlug => {
     Object.keys(CITIES).slice(0, 15).forEach(citySlug => {
       urls.push({
-        url: `${BASE_URL}/zaimy/${slug}/v-${citySlug}`,
+        url: `${BASE_URL}/zaimy/${catSlug}/v-${citySlug}`,
         lastModified: now,
-        changeFrequency: 'weekly',
+        changeFrequency: 'weekly' as const,
         priority: 0.7,
       });
     });
   });
 
-  // === ГОРОДА (все займы в городе) ===
-  Object.keys(CITIES).forEach(citySlug => {
-    urls.push({
-      url: `${BASE_URL}/zaimy/v-${citySlug}`,
-      lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    });
-  });
-
-  // === СУММЫ ===
+  // === AMOUNTS ===
   AMOUNTS.forEach(amount => {
     urls.push({
       url: `${BASE_URL}/zaimy/do-${amount.slug}-rublei`,
       lastModified: now,
-      changeFrequency: 'monthly',
+      changeFrequency: 'monthly' as const,
       priority: 0.6,
     });
+  });
 
-    // Сумма + каждый город (топ-15)
-    Object.keys(CITIES).slice(0, 15).forEach(citySlug => {
+  // === SEO PAGES FROM DATABASE (Programmatic SEO) ===
+  try {
+    const seoPages = await db.seoPage.findMany({
+      where: {
+        isIndexable: true,
+        noIndex: false,
+        status: 'published',
+      },
+      select: {
+        urlPath: true,
+        priority: true,
+        updatedAt: true,
+      },
+      orderBy: { priority: 'desc' },
+      take: MAX_URLS_PER_SITEMAP,
+    });
+
+    seoPages.forEach(page => {
       urls.push({
-        url: `${BASE_URL}/zaimy/do-${amount.slug}-rublei/v-${citySlug}`,
-        lastModified: now,
-        changeFrequency: 'monthly',
-        priority: 0.5,
+        url: `${BASE_URL}${page.urlPath}`,
+        lastModified: page.updatedAt || now,
+        changeFrequency: 'weekly' as const,
+        priority: page.priority / 10,
       });
     });
-  });
+  } catch (error) {
+    console.error('[Sitemap] Error fetching SEO pages:', error);
+  }
 
   // === МФО (бренды) ===
   try {

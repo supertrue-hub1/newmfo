@@ -2,23 +2,29 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Header, Footer } from '@/components/layout';
 import { db } from '@/lib/db';
-import { LOAN_CATEGORIES, CITIES, AMOUNTS, type LoanCategorySlug, type CitySlug } from '@/lib/seo/slugs';
-import { generateCategoryMetadata, generateBreadcrumb } from '@/lib/seo/metadata';
-import { SimpleOfferCard } from '@/lib/adapters/offer-adapter';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ChevronRight, MapPin, CreditCard, Clock, Star, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { LOAN_CATEGORIES, CITIES, type LoanCategorySlug, type CitySlug } from '@/lib/seo/slugs';
+import { generateBreadcrumb } from '@/lib/seo/metadata';
+import { SeoPageHeader } from '@/components/seo/seo-page-header';
+import { OfferList } from '@/components/seo/offer-list';
+import { CityStats } from '@/components/seo/stats-block';
+import { RelatedLinks, SeoFooterLinks } from '@/components/seo/related-links';
+import { FaqBlock } from '@/components/seo/faq-block';
 
-export const revalidate = 0;
+// ISR: пересоздавать страницу каждый час
+export const revalidate = 3600;
 
+// Динамические параметры - не генерировать все страницы статически
+export const dynamicParams = true;
+
+// Генерируем только топ-50 страниц при build
 export async function generateStaticParams() {
   const params = [];
   
-  // Категории + топ-15 городов
-  const topCities = Object.keys(CITIES).slice(0, 15);
+  // Топ-10 категорий × топ-5 городов = 50 страниц
+  const topCategories = Object.keys(LOAN_CATEGORIES).slice(0, 10);
+  const topCities = Object.keys(CITIES).slice(0, 5);
   
-  for (const categorySlug of Object.keys(LOAN_CATEGORIES)) {
+  for (const categorySlug of topCategories) {
     for (const citySlug of topCities) {
       params.push({ category: categorySlug, city: citySlug });
     }
@@ -34,24 +40,61 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { category, city } = await params;
   
+  // Проверяем по базе SEO-страниц
   if (!(category in LOAN_CATEGORIES) || !(city in CITIES)) {
     return { title: 'Страница не найдена' };
   }
   
-  return generateCategoryMetadata(category as LoanCategorySlug, city as CitySlug);
+  // Пытаемся получить кастомный SEO из БД
+  try {
+    const cityRecord = await db.seoCity.findUnique({ where: { slug: city } });
+    const loanTypeRecord = await db.seoLoanType.findUnique({ where: { categorySlug: category } });
+    
+    if (cityRecord && loanTypeRecord) {
+      const seoPage = await db.seoPage.findFirst({
+        where: {
+          cityId: cityRecord.id,
+          loanTypeId: loanTypeRecord.id,
+          amount: null,
+          term: null,
+        },
+      });
+      
+      if (seoPage && !seoPage.noIndex) {
+        return {
+          title: seoPage.pageTitle,
+          description: seoPage.pageDescription,
+          alternates: {
+            canonical: `https://cashpeek.ru${seoPage.urlPath}`,
+          },
+        };
+      }
+    }
+  } catch (e) {
+    // Игнорируем ошибки БД, используем дефолтные мета-теги
+  }
+  
+  // Fallback на дефолтные мета-теги
+  const cat = LOAN_CATEGORIES[category as LoanCategorySlug];
+  const c = CITIES[city as CitySlug];
+  
+  return {
+    title: `${cat.name} ${c.preposition} — ${cat.shortDesc}`,
+    description: `${cat.description} Доступно в ${c.name}.`,
+    alternates: {
+      canonical: `https://cashpeek.ru/zaimy/${category}/v-${city}`,
+    },
+  };
 }
 
-async function getLoansByCategoryAndCity(categorySlug: LoanCategorySlug, citySlug: CitySlug) {
-  const category = LOAN_CATEGORIES[categorySlug];
-  const city = CITIES[citySlug];
-  
+async function getOffersByCategory(categorySlug: string) {
   const offers = await db.loanOffer.findMany({
     where: { status: 'published' },
     orderBy: { rating: 'desc' },
     take: 20,
   });
   
-  return { offers, category, city };
+  return offers;
 }
 
 export default async function CategoryCityPage({ 
@@ -67,20 +110,19 @@ export default async function CategoryCityPage({
   
   const category = LOAN_CATEGORIES[categorySlug as LoanCategorySlug];
   const city = CITIES[citySlug as CitySlug];
-  const { offers } = await getLoansByCategoryAndCity(
-    categorySlug as LoanCategorySlug,
-    citySlug as CitySlug
-  );
+  const offers = await getOffersByCategory(categorySlug);
   
+  // Breadcrumb для JSON-LD
   const breadcrumb = [
-    { name: 'Главная', url: '/' },
-    { name: 'Займы', url: '/zaimy' },
-    { name: category.name, url: `/zaimy/${categorySlug}` },
-    { name: `${city.preposition}`, url: `/zaimy/${categorySlug}/v-${citySlug}` },
+    { name: 'Главная', url: 'https://cashpeek.ru/' },
+    { name: 'Займы', url: 'https://cashpeek.ru/zaimy' },
+    { name: category.name, url: `https://cashpeek.ru/zaimy/${categorySlug}` },
+    { name: city.preposition, url: `https://cashpeek.ru/zaimy/${categorySlug}/v-${citySlug}` },
   ];
   
   return (
     <div className="flex min-h-screen flex-col bg-white">
+      {/* JSON-LD Breadcrumb */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(generateBreadcrumb(breadcrumb)) }}
@@ -89,61 +131,45 @@ export default async function CategoryCityPage({
       <Header />
       
       <main className="flex-1">
-        <section className="bg-gradient-to-b from-slate-50 to-white border-b">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-8">
-            <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6 flex-wrap">
-              <Link href="/" className="hover:text-primary transition-colors">Главная</Link>
-              <ChevronRight className="h-4 w-4" />
-              <Link href="/zaimy" className="hover:text-primary transition-colors">Займы</Link>
-              <ChevronRight className="h-4 w-4" />
-              <Link href={`/zaimy/${categorySlug}`} className="hover:text-primary transition-colors">
-                {category.name}
-              </Link>
-              <ChevronRight className="h-4 w-4" />
-              <span className="text-foreground font-medium">{city.preposition}</span>
-            </nav>
-            
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-              {category.name} {city.preposition}
-            </h1>
-            
-            <p className="text-lg text-slate-600 max-w-3xl mb-6">
-              {category.description} Доступно в {city.name}.
-            </p>
-            
-            <div className="flex flex-wrap gap-4 text-sm">
-              <Badge variant="secondary" className="flex items-center gap-1.5">
-                <CreditCard className="h-3.5 w-3.5" />
-                {offers.length} предложений
-              </Badge>
-              <Badge variant="secondary" className="flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5" />
-                {city.name}
-              </Badge>
-            </div>
+        {/* SEO Header */}
+        <SeoPageHeader
+          h1={`${category.h1} ${city.preposition}`}
+          description={`${category.description} Доступно в ${city.name}.`}
+          cityName={city.name}
+          cityPreposition={city.preposition}
+          loanTypeName={category.name}
+          offersCount={offers.length}
+        />
+
+        {/* Offers List с сортировкой по интенту */}
+        <section className="py-8">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+            <OfferList 
+              offers={offers} 
+              loanTypeSlug={categorySlug}
+              showSort={true}
+            />
           </div>
         </section>
 
-        <section className="py-8">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-            <div className="space-y-4">
-              {offers.length > 0 ? (
-                offers.map(offer => (
-                  <SimpleOfferCard key={offer.id} offer={offer} />
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground mb-4">
-                    В данной категории и городе пока нет предложений
-                  </p>
-                  <Button asChild>
-                    <Link href="/zaimy">Смотреть все займы</Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+        {/* City Stats (Anti-Thin Content) */}
+        <CityStats cityName={city.name} citySlug={citySlug} />
+
+        {/* FAQ Block (Anti-Thin Content) */}
+        <FaqBlock loanTypeSlug={categorySlug} cityName={city.name} />
+
+        {/* Related Links (Anti-Orphan Pages) */}
+        <RelatedLinks 
+          citySlug={citySlug}
+          cityName={city.name}
+          loanTypeSlug={categorySlug}
+          loanTypeName={category.name}
+        />
+
+        {/* Footer Links */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl pb-8">
+          <SeoFooterLinks citySlug={citySlug} loanTypeSlug={categorySlug} />
+        </div>
       </main>
 
       <Footer />

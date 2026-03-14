@@ -330,7 +330,139 @@ model BlogPostTag {
   tagId   String
   
   post    BlogPost   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  tag     BlogTag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tag     Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
   
   @@id([postId, tagId])
+}
+
+// ============================================
+// Programmatic SEO - Cities
+// ============================================
+
+model SeoCity {
+  id          String   @id @default(cuid())
+  name        String   // Город (кириллица)
+  slug        String   @unique // URL slug (латиница)
+  preposition String   // "в Москве", "в Санкт-Петербурге"
+  genitive    String   // "Москвы", "Санкт-Петербурга"
+  population  Int?     // Population
+  region      String?  // Region name
+  isActive    Boolean  @default(true)
+  priority    Int      @default(10) // Для приоритезации в generateStaticParams
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  seoPages    SeoPage[]
+  
+  @@index([slug])
+  @@index([isActive])
+  @@index([priority])
+}
+
+// ============================================
+// Programmatic SEO - Loan Types
+// ============================================
+
+model SeoLoanType {
+  id          String   @id @default(cuid())
+  name        String   // Название (кириллица)
+  slug        String   @unique // URL slug
+  namePrepositional String // "на карту", "без отказа"
+  description String?  // Краткое описание
+  keywords    String?  // JSON array of keywords
+  h1          String?  // H1 заголовок
+  shortDesc   String?  // Короткое описание для карточек
+  sortOrder   Int      @default(10)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Маппинг на LOAN_CATEGORIES из кода
+  categorySlug String? // Ссылка на slug из LOAN_CATEGORIES
+  
+  // Relations
+  seoPages    SeoPage[]
+  
+  @@index([slug])
+  @@index([isActive])
+  @@index([categorySlug])
+}
+
+// ============================================
+// Programmatic SEO - Pages
+// ============================================
+
+model SeoPage {
+  id              String   @id @default(cuid())
+  
+  // URL components
+  cityId          String?
+  city            SeoCity? @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  
+  loanTypeId      String?
+  loanType        SeoLoanType? @relation(fields: [loanTypeId], references: [id], onDelete: Cascade)
+  
+  // Optional: amount and term for granular pages
+  amount          Int?     // Sum in rubles (1000, 5000, etc.)
+  amountSlug      String?  // "1000", "5000", etc.
+  term            Int?     // Term in days (7, 14, 30, etc.)
+  termSlug        String?  // "7-dney", "30-dney", etc.
+  
+  // SEO content from JSON
+  pageTitle       String
+  pageDescription String?  @db.Text
+  h1              String?
+  
+  // URL path (generated)
+  urlPath         String   @unique // "/zaimy/na-kartu/v-moskva"
+  
+  // Indexing control
+  isIndexable     Boolean  @default(true)
+  canonicalUrl    String?  // Canonical URL если отличается
+  noIndex         Boolean  @default(false) // Полный noindex
+  
+  // Priority for crawl budget
+  priority        Int      @default(5) // 1-10, higher = more important
+  
+  // Content uniqueness (для Anti-Thin Content)
+  contentHash     String?  // Хэш контента для дедупликации
+  variationSeed   Int?     // Seed для псевдо-случайной статистики
+  
+  // Analytics
+  viewsCount      Int      @default(0)
+  
+  // Status
+  status          String   @default("published") // published, draft
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Indexes
+  @@index([cityId, loanTypeId])
+  @@index([urlPath])
+  @@index([isIndexable, noIndex])
+  @@index([priority])
+  @@index([status])
+  @@unique([cityId, loanTypeId, amount, term])
+}
+
+// ============================================
+// SEO FAQ Block
+// ============================================
+
+model SeoFaq {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String   @db.Text
+  loanTypeId  String?  // Optional: привязка к типу займа
+  loanType    SeoLoanType? @relation(fields: [loanTypeId], references: [id], onDelete: Cascade)
+  cityId      String?  // Optional: привязка к городу
+  city        SeoCity? @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  sortOrder   Int      @default(10)
+  isActive    Boolean  @default(true)
+  
+  @@index([loanTypeId])
+  @@index([cityId])
 }
