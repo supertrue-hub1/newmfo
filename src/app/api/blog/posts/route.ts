@@ -102,24 +102,43 @@ export async function POST(request: NextRequest) {
     const wordCount = body.content?.replace(/<[^>]*>/g, '').split(/\s+/).length || 0;
     const readingTime = Math.max(1, Math.ceil(wordCount / 200));
     
+    // Prepare data - handle empty strings and null values
+    const data: any = {
+      title: body.title,
+      slug: body.slug,
+      excerpt: body.excerpt || null,
+      content: body.content || '',
+      featuredImage: body.featuredImage || null,
+      metaTitle: body.metaTitle || null,
+      metaDescription: body.metaDescription || null,
+      keywords: body.keywords || null,
+      readingTime,
+      status: body.status || 'draft',
+      isFeatured: body.isFeatured || false,
+    };
+    
+    // Handle categoryId - convert empty string to null
+    if (body.categoryId && body.categoryId !== '') {
+      data.categoryId = body.categoryId;
+    }
+    
+    // Handle authorId - convert empty string to null
+    if (body.authorId && body.authorId !== '') {
+      data.authorId = body.authorId;
+    }
+    
+    // Handle linkedOfferIds
+    if (body.linkedOfferIds && Array.isArray(body.linkedOfferIds) && body.linkedOfferIds.length > 0) {
+      data.linkedOfferIds = JSON.stringify(body.linkedOfferIds);
+    }
+    
+    // Set publishedAt if status is published
+    if (body.status === 'published') {
+      data.publishedAt = new Date();
+    }
+    
     const post = await db.blogPost.create({
-      data: {
-        title: body.title,
-        slug: body.slug,
-        excerpt: body.excerpt,
-        content: body.content,
-        featuredImage: body.featuredImage,
-        metaTitle: body.metaTitle,
-        metaDescription: body.metaDescription,
-        keywords: body.keywords,
-        categoryId: body.categoryId,
-        authorId: body.authorId,
-        linkedOfferIds: body.linkedOfferIds ? JSON.stringify(body.linkedOfferIds) : null,
-        readingTime,
-        status: body.status || 'draft',
-        isFeatured: body.isFeatured || false,
-        publishedAt: body.status === 'published' ? new Date() : null,
-      },
+      data,
       include: {
         category: true,
         author: true,

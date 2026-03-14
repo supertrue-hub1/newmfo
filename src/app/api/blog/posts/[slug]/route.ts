@@ -93,18 +93,33 @@ export async function PUT(
     
     if (body.title !== undefined) updateData.title = body.title;
     if (body.slug !== undefined) updateData.slug = body.slug;
-    if (body.excerpt !== undefined) updateData.excerpt = body.excerpt;
+    if (body.excerpt !== undefined) updateData.excerpt = body.excerpt || null;
     if (body.content !== undefined) {
       updateData.content = body.content;
       updateData.readingTime = readingTime;
     }
-    if (body.featuredImage !== undefined) updateData.featuredImage = body.featuredImage;
-    if (body.metaTitle !== undefined) updateData.metaTitle = body.metaTitle;
-    if (body.metaDescription !== undefined) updateData.metaDescription = body.metaDescription;
-    if (body.keywords !== undefined) updateData.keywords = body.keywords;
-    if (body.categoryId !== undefined) updateData.categoryId = body.categoryId;
-    if (body.authorId !== undefined) updateData.authorId = body.authorId;
-    if (body.linkedOfferIds !== undefined) updateData.linkedOfferIds = JSON.stringify(body.linkedOfferIds);
+    if (body.featuredImage !== undefined) updateData.featuredImage = body.featuredImage || null;
+    if (body.metaTitle !== undefined) updateData.metaTitle = body.metaTitle || null;
+    if (body.metaDescription !== undefined) updateData.metaDescription = body.metaDescription || null;
+    if (body.keywords !== undefined) updateData.keywords = body.keywords || null;
+    
+    // Handle categoryId - empty string means null
+    if (body.categoryId !== undefined) {
+      updateData.categoryId = body.categoryId && body.categoryId !== '' ? body.categoryId : null;
+    }
+    
+    // Handle authorId - empty string means null
+    if (body.authorId !== undefined) {
+      updateData.authorId = body.authorId && body.authorId !== '' ? body.authorId : null;
+    }
+    
+    // Handle linkedOfferIds
+    if (body.linkedOfferIds !== undefined) {
+      updateData.linkedOfferIds = body.linkedOfferIds && body.linkedOfferIds.length > 0 
+        ? JSON.stringify(body.linkedOfferIds) 
+        : null;
+    }
+    
     if (body.status !== undefined) {
       updateData.status = body.status;
       if (body.status === 'published') {
