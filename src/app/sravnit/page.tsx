@@ -20,8 +20,8 @@ import {
   TrendingUp,
   Timer,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react';
-import { mockOffers } from '@/data/mock-offers';
 import type { Offer } from '@/types/offer';
 import { cn } from '@/lib/utils';
 
@@ -77,6 +77,26 @@ export default function ComparePage() {
   const [term, setTerm] = React.useState(14);
   const [sortBy, setSortBy] = React.useState<SortType>('min_overpayment');
   const [compareList, setCompareList] = React.useState<string[]>([]);
+  const [offers, setOffers] = React.useState<Offer[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // Fetch offers from API
+  React.useEffect(() => {
+    const fetchOffers = async () => {
+      try {
+        const response = await fetch('/api/offers?status=published');
+        if (response.ok) {
+          const data = await response.json();
+          setOffers(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch offers:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchOffers();
+  }, []);
 
   // Handle amount change
   const handleAmountChange = React.useCallback((values: number[]) => {
@@ -98,9 +118,9 @@ export default function ComparePage() {
 
   // Process offers with calculations
   const processedOffers: CompareOffer[] = React.useMemo(() => {
-    return mockOffers.map((offer) => {
+    return offers.map((offer) => {
       const isEligible = amount >= offer.minAmount && amount <= offer.maxAmount && term >= offer.minTerm && term <= offer.maxTerm;
-      const calculatedOverpayment = calculateOverpayment(amount, term, offer.firstLoanRate);
+      const calculatedOverpayment = calculateOverpayment(amount, term, offer.firstLoanRate || 0);
       const calculatedTotal = amount + calculatedOverpayment;
       const returnDate = formatReturnDate(term);
 
@@ -112,7 +132,7 @@ export default function ComparePage() {
         isEligible,
       };
     });
-  }, [amount, term]);
+  }, [offers, amount, term]);
 
   // Sort offers
   const sortedOffers = React.useMemo(() => {
@@ -269,7 +289,7 @@ export default function ComparePage() {
         </section>
 
         {/* Hot Offer */}
-        {hotOffer && (
+        {!isLoading && hotOffer && (
           <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-6">
             <Card className="border-2 border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 overflow-hidden relative">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-amber-400" />
@@ -320,7 +340,23 @@ export default function ComparePage() {
           </section>
         )}
 
+        {/* Loading State */}
+        {isLoading && (
+          <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+            <p className="mt-2 text-muted-foreground">Загрузка предложений...</p>
+          </section>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && offers.length === 0 && (
+          <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+            <p className="text-muted-foreground">Нет доступных предложений</p>
+          </section>
+        )}
+
         {/* Offers List */}
+        {!isLoading && offers.length > 0 && (
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 pb-12">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">
@@ -474,6 +510,7 @@ export default function ComparePage() {
             ))}
           </div>
         </section>
+        )}
       </main>
 
       <Footer />
