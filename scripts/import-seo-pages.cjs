@@ -138,6 +138,10 @@ async function importFromJson(filePath) {
     });
   }
   
+  // Очищаем старые страницы для чистого теста
+  console.log('🗑 Очищаю старые страницы...');
+  await prisma.seoPage.deleteMany({});
+  
   // Импортируем страницы
   console.log('\n📄 Импортирую страницы...');
   let imported = 0;
@@ -163,18 +167,26 @@ async function importFromJson(filePath) {
       continue;
     }
     
-    const urlPath = `/zaimy/${categorySlug}/v-${citySlug}`;
+    // URL с учетом суммы и срока
+    let urlPath = `/zaimy/${categorySlug}/v-${citySlug}`;
+    if (amountValue) {
+      urlPath = `/zaimy/do-${amountValue}-rublei/v-${citySlug}`;
+    }
+    if (termDays) {
+      urlPath += `?term=${termDays}`;
+    }
+    
+    // Пропускаем дубликаты по urlPath
+    const existing = await prisma.seoPage.findUnique({ where: { urlPath } });
+    if (existing) {
+      skipped++;
+      continue;
+    }
+    
     const priority = 8;
     
     await prisma.seoPage.upsert({
-      where: {
-        cityId_loanTypeId_amount_term: {
-          cityId,
-          loanTypeId,
-          amount: amountValue || 0,
-          term: termDays || 0,
-        },
-      },
+      where: { urlPath },
       update: {
         pageTitle: item.page_title,
         pageDescription: item.page_description,
@@ -182,7 +194,6 @@ async function importFromJson(filePath) {
         amountSlug: amountSlug || undefined,
         term: termDays,
         termSlug: termSlug || undefined,
-        urlPath,
         isIndexable: true,
         noIndex: false,
         priority,
