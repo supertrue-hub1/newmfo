@@ -40,61 +40,18 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { category, city } = await params;
   
-  // Проверяем по базе SEO-страниц
-  if (!(category in LOAN_CATEGORIES) || !(city in CITIES)) {
-    return { title: 'Страница не найдена' };
-  }
-  
-  // Пытаемся получить кастомный SEO из БД
-  try {
-    const cityRecord = await db.seoCity.findUnique({ where: { slug: city } });
-    const loanTypeRecord = await db.seoLoanType.findUnique({ where: { categorySlug: category } });
-    
-    if (cityRecord && loanTypeRecord) {
-      const seoPage = await db.seoPage.findFirst({
-        where: {
-          cityId: cityRecord.id,
-          loanTypeId: loanTypeRecord.id,
-          amount: null,
-          term: null,
-        },
-      });
-      
-      if (seoPage && !seoPage.noIndex) {
-        return {
-          title: seoPage.pageTitle,
-          description: seoPage.pageDescription,
-          alternates: {
-            canonical: `https://cashpeek.ru${seoPage.urlPath}`,
-          },
-        };
-      }
-    }
-  } catch (e) {
-    // Игнорируем ошибки БД, используем дефолтные мета-теги
-  }
-  
-  // Fallback на дефолтные мета-теги
+  // Проверяем что категория и город существуют
   const cat = LOAN_CATEGORIES[category as LoanCategorySlug];
   const c = CITIES[city as CitySlug];
+  
+  if (!cat || !c) {
+    return { title: 'Страница не найдена' };
+  }
   
   return {
     title: `${cat.name} ${c.preposition} — ${cat.shortDesc}`,
     description: `${cat.description} Доступно в ${c.name}.`,
-    alternates: {
-      canonical: `https://cashpeek.ru/zaimy/${category}/v-${city}`,
-    },
   };
-}
-
-async function getOffersByCategory(categorySlug: string) {
-  const offers = await db.loanOffer.findMany({
-    where: { status: 'published' },
-    orderBy: { rating: 'desc' },
-    take: 20,
-  });
-  
-  return offers;
 }
 
 export default async function CategoryCityPage({ 
@@ -104,13 +61,24 @@ export default async function CategoryCityPage({
 }) {
   const { category: categorySlug, city: citySlug } = await params;
   
-  if (!(categorySlug in LOAN_CATEGORIES) || !(citySlug in CITIES)) {
+  const category = LOAN_CATEGORIES[categorySlug as LoanCategorySlug];
+  const city = CITIES[citySlug as CitySlug];
+  
+  if (!category || !city) {
     notFound();
   }
   
-  const category = LOAN_CATEGORIES[categorySlug as LoanCategorySlug];
-  const city = CITIES[citySlug as CitySlug];
-  const offers = await getOffersByCategory(categorySlug);
+  // Получаем офферы (не блокируем рендеринг)
+  let offers = [];
+  try {
+    offers = await db.loanOffer.findMany({
+      where: { status: 'published' },
+      orderBy: { rating: 'desc' },
+      take: 20,
+    });
+  } catch (e) {
+    console.error('Failed to fetch offers:', e);
+  }
   
   // Breadcrumb для JSON-LD
   const breadcrumb = [
