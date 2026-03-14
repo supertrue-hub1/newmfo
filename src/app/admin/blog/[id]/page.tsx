@@ -16,106 +16,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import {
   ArrowLeft,
   Save,
   Eye,
   Loader2,
-  Upload,
   Image as ImageIcon,
-  Bold,
-  Italic,
-  Heading2,
-  Heading3,
-  List,
-  ListOrdered,
-  Quote,
-  Link2,
-  Code,
-  Minus,
-  HelpCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { generateSlug, calculateReadingTime } from '@/lib/blog/utils';
+import { TipTapEditor } from '@/components/blog/tiptap-editor';
 import type { BlogCategory, BlogAuthor } from '@/types/blog';
-
-function HtmlEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const editorRef = React.useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const insertText = (before: string, after: string = '') => {
-    const textarea = editorRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = value.substring(start, end);
-    const newText = value.substring(0, start) + before + selectedText + after + value.substring(end);
-    onChange(newText);
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
-    }, 0);
-  };
-
-  const insertHeading = (level: 2 | 3) => {
-    const textarea = editorRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = value.substring(start, end);
-    const slug = selectedText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const html = '<h' + level + ' id="' + slug + '">' + selectedText + '</h' + level + '>';
-    const newText = value.substring(0, start) + html + value.substring(end);
-    onChange(newText);
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (data.url) {
-        insertText('<img src="' + data.url + '" alt="Изображение" style="max-width: 100%; border-radius: 8px; margin: 16px 0;" />');
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Ошибка загрузки изображения');
-    }
-  };
-
-  const insertFaq = () => {
-    insertText('\n<!-- FAQ: [{"question":"Вопрос?","answer":"Ответ на вопрос."}] -->\n');
-  };
-
-  return (
-    <div className="border rounded-lg overflow-hidden">
-      <div className="flex items-center gap-1 p-2 bg-slate-50 border-b flex-wrap">
-        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => insertText('<strong>', '</strong>')} title="Жирный"><Bold className="h-4 w-4" /></Button>
-        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => insertText('<em>', '</em>')} title="Курсив"><Italic className="h-4 w-4" /></Button>
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => insertHeading(2)} title="Заголовок 2"><Heading2 className="h-4 w-4" /></Button>
-        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => insertHeading(3)} title="Заголовок 3"><Heading3 className="h-4 w-4" /></Button>
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => insertText('<ul>\n<li>', '</li>\n</ul>')} title="Список"><List className="h-4 w-4" /></Button>
-        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => insertText('<ol>\n<li>', '</li>\n</ol>')} title="Нумерованный"><ListOrdered className="h-4 w-4" /></Button>
-        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => insertText('<blockquote>', '</blockquote>')} title="Цитата"><Quote className="h-4 w-4" /></Button>
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => insertText('<a href="URL">', '</a>')} title="Ссылка"><Link2 className="h-4 w-4" /></Button>
-        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => insertText('<code>', '</code>')} title="Код"><Code className="h-4 w-4" /></Button>
-        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => insertText('\n<hr />\n')} title="Разделитель"><Minus className="h-4 w-4" /></Button>
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => fileInputRef.current?.click()}><Upload className="h-4 w-4" />Картинка</Button>
-        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 text-primary" onClick={insertFaq} title="Вставить FAQ блок"><HelpCircle className="h-4 w-4" />FAQ</Button>
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-      </div>
-      <textarea ref={editorRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder="Напишите содержимое статьи в HTML формате..." className="w-full min-h-[500px] p-4 font-mono text-sm focus:outline-none resize-y bg-white" />
-    </div>
-  );
-}
 
 function ContentPreview({ content }: { content: string }) {
   return <div className="prose prose-slate max-w-none p-6 bg-white rounded-lg border min-h-[500px]" dangerouslySetInnerHTML={{ __html: content }} />;
@@ -229,7 +140,7 @@ export default function AdminBlogEditorPage() {
           <Card><CardContent className="p-4">
             <Tabs defaultValue="editor">
               <TabsList className="mb-4"><TabsTrigger value="editor">Редактор</TabsTrigger><TabsTrigger value="preview">Предпросмотр</TabsTrigger></TabsList>
-              <TabsContent value="editor"><HtmlEditor value={form.content} onChange={(content) => setForm(prev => ({ ...prev, content }))} /></TabsContent>
+              <TabsContent value="editor"><TipTapEditor value={form.content} onChange={(content) => setForm(prev => ({ ...prev, content }))} /></TabsContent>
               <TabsContent value="preview">{form.content ? <ContentPreview content={form.content} /> : <div className="text-center py-12 text-muted-foreground">Содержимое не добавлено</div>}</TabsContent>
             </Tabs>
           </CardContent></Card>
