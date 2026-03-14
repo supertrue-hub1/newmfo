@@ -3,7 +3,19 @@ import { notFound } from 'next/navigation';
 import { Header, Footer } from '@/components/layout';
 import { db } from '@/lib/db';
 import { LOAN_CATEGORIES, CITIES, AMOUNTS, type LoanCategorySlug, type CitySlug } from '@/lib/seo/slugs';
+import { getCategoryConfig } from '@/lib/category/category-config';
 import { generateBreadcrumb } from '@/lib/seo/metadata';
+import {
+  CategoryHero,
+  QuickScenarios,
+  TopOffers,
+  OffersComparisonTable,
+  HowToChoose,
+  WhoSuits,
+  CategoryFaq,
+  InternalLinks,
+  TrustBlock,
+} from '@/components/category';
 import { SeoPageHeader } from '@/components/seo/seo-page-header';
 import { OfferList } from '@/components/seo/offer-list';
 import { CityStats } from '@/components/seo/stats-block';
@@ -72,6 +84,14 @@ export async function generateMetadata({
   const parsed = parseSlug(slug);
   
   if (parsed.type === 'category') {
+    const config = getCategoryConfig(parsed.categorySlug);
+    if (config) {
+      return {
+        title: config.title,
+        description: config.description,
+        keywords: config.keywords,
+      };
+    }
     const cat = LOAN_CATEGORIES[parsed.categorySlug as LoanCategorySlug];
     if (!cat) return { title: 'Страница не найдена' };
     return {
@@ -121,6 +141,23 @@ export async function generateMetadata({
   return { title: 'Страница не найдена' };
 }
 
+// Получение офферов
+async function getOffers() {
+  try {
+    return await db.loanOffer.findMany({
+      where: { status: 'published' },
+      orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
+      take: 20,
+      include: {
+        tags: { include: { tag: true } },
+      },
+    });
+  } catch (e) {
+    console.error('Failed to fetch offers:', e);
+    return [];
+  }
+}
+  
 export default async function DynamicSeoPage({ 
   params 
 }: { 
@@ -128,21 +165,76 @@ export default async function DynamicSeoPage({
 }) {
   const { slug } = await params;
   const parsed = parseSlug(slug);
+  const offers = await getOffers();
   
-  // Получаем офферы
-  let offers = [];
-  try {
-    offers = await db.loanOffer.findMany({
-      where: { status: 'published' },
-      orderBy: { rating: 'desc' },
-      take: 20,
-    });
-  } catch (e) {
-    console.error('Failed to fetch offers:', e);
-  }
+  // Форматируем офферы для компонентов
+  const formattedOffers = offers.map((offer) => ({
+    ...offer,
+    features: offer.tags?.map((t) => t.tag.slug) || [],
+  }));
   
-  // Рендерим по типу страницы
+  // ============================================
+  // КАТЕГОРИЯ (новый дизайн)
+  // ============================================
   if (parsed.type === 'category') {
+    const config = getCategoryConfig(parsed.categorySlug);
+    
+    // Если есть конфиг — используем новый дизайн
+    if (config) {
+      const topOffers = formattedOffers.slice(0, 3);
+      
+      const breadcrumb = [
+        { name: 'Главная', url: 'https://cashpeek.ru/' },
+        { name: 'Займы', url: 'https://cashpeek.ru/zaimy' },
+        { name: config.name, url: `https://cashpeek.ru/zaimy/${parsed.categorySlug}` },
+      ];
+      
+      const seoContent = `
+        <p><strong>${config.name}</strong> — удобный способ получить деньги на банковскую карту без визита в офис и справок о доходах.</p>
+        <h3>Как получить займ ${config.namePrepositional}?</h3>
+        <p>Процесс оформления занимает 5–10 минут. Выберите предложение, заполните анкету на сайте МФО и получите деньги на карту.</p>
+        <h3>Требования к заёмщику</h3>
+        <ul>
+          <li>Гражданство РФ</li>
+          <li>Возраст от 18 до 75 лет</li>
+          <li>Постоянная регистрация</li>
+          <li>Паспорт и банковская карта</li>
+        </ul>
+      `;
+
+      return (
+        <div className="flex min-h-screen flex-col bg-white">
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(generateBreadcrumb(breadcrumb)) }}
+          />
+          <Header />
+          <main className="flex-1">
+            <CategoryHero config={config} offersCount={offers.length} />
+            <QuickScenarios scenarios={config.scenarios} />
+            <TopOffers offers={topOffers} title="Рекомендуемые предложения" />
+            <TrustBlock />
+            <section id="offers" className="py-8 bg-white">
+              <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+                <h2 className="text-xl font-bold text-foreground mb-4">Все предложения</h2>
+                <OffersComparisonTable offers={formattedOffers} />
+              </div>
+            </section>
+            <HowToChoose steps={config.howToChoose} />
+            <WhoSuits items={config.whoSuits} />
+            <div
+              className="prose prose-slate max-w-none container mx-auto px-4 sm:px-6 lg:px-8 py-10"
+              dangerouslySetInnerHTML={{ __html: seoContent }}
+            />
+            <CategoryFaq items={config.faq} />
+            <InternalLinks currentCategory={parsed.categorySlug} />
+          </main>
+          <Footer />
+        </div>
+      );
+    }
+    
+    // Fallback на старый дизайн
     const category = LOAN_CATEGORIES[parsed.categorySlug as LoanCategorySlug];
     if (!category) notFound();
     
@@ -167,6 +259,9 @@ export default async function DynamicSeoPage({
     );
   }
   
+  // ============================================
+  // ГОРОД
+  // ============================================
   if (parsed.type === 'city') {
     const city = CITIES[parsed.citySlug as CitySlug];
     if (!city) notFound();
@@ -192,6 +287,9 @@ export default async function DynamicSeoPage({
     );
   }
   
+  // ============================================
+  // КАТЕГОРИЯ + ГОРОД
+  // ============================================
   if (parsed.type === 'category-city') {
     const category = LOAN_CATEGORIES[parsed.categorySlug as LoanCategorySlug];
     const city = CITIES[parsed.citySlug as CitySlug];
@@ -234,6 +332,9 @@ export default async function DynamicSeoPage({
     );
   }
   
+  // ============================================
+  // СУММА
+  // ============================================
   if (parsed.type === 'amount') {
     const amount = AMOUNTS.find(a => a.slug === parsed.amountSlug);
     if (!amount) notFound();
@@ -259,6 +360,9 @@ export default async function DynamicSeoPage({
     );
   }
   
+  // ============================================
+  // СУММА + ГОРОД
+  // ============================================
   if (parsed.type === 'amount-city') {
     const amount = AMOUNTS.find(a => a.slug === parsed.amountSlug);
     const city = CITIES[parsed.citySlug as CitySlug];
