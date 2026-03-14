@@ -4,12 +4,6 @@ import * as React from 'react';
 import { useTheme } from 'next-themes';
 import { Menu, X, CreditCard, Scale, BookOpen, FileText, User, Sun, Moon, ChevronDown, Smartphone, CreditCard as CardIcon, CheckCircle, AlertCircle, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
@@ -72,6 +66,8 @@ function ThemeToggle() {
 
 export function Header({ className }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [loansMenuOpen, setLoansMenuOpen] = React.useState(false);
+  const loansMenuRef = React.useRef<HTMLDivElement>(null);
 
   return (
     <header
@@ -96,42 +92,38 @@ export function Header({ className }: HeaderProps) {
         {/* Desktop nav */}
         <nav className="hidden md:flex md:items-center md:gap-8">
           {/* Loans Dropdown с hover */}
-          <DropdownMenu openDelay={0} closeDelay={200}>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus:text-primary outline-none">
-                Займы
-                <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              align="start" 
-              className="w-64"
-              sideOffset={8}
-              onMouseLeave={(e) => {
-                // Не закрывать при наведении на контент
-                const rect = e.currentTarget.getBoundingClientRect();
-                const related = e.relatedTarget as HTMLElement;
-                if (related && !rect.contains(related.getBoundingClientRect())) {
-                  // Оставим dropdown открытым
-                }
-              }}
-            >
-              {loansSubMenu.map((item) => (
-                <DropdownMenuItem key={item.href} asChild>
-                  <a
-                    href={item.href}
-                    className="flex items-start gap-3 p-3 cursor-pointer"
-                  >
-                    <item.icon className="h-5 w-5 mt-0.5 text-primary flex-shrink-0" />
-                    <div>
-                      <div className="font-medium text-foreground">{item.label}</div>
-                      <div className="text-xs text-muted-foreground">{item.description}</div>
-                    </div>
-                  </a>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div 
+            className="relative"
+            ref={loansMenuRef}
+            onMouseEnter={() => setLoansMenuOpen(true)}
+            onMouseLeave={() => setLoansMenuOpen(false)}
+          >
+            <button className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus:text-primary outline-none">
+              Займы
+              <ChevronDown className={`h-4 w-4 transition-transform ${loansMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {/* Dropdown Content */}
+            {loansMenuOpen && (
+              <div className="absolute top-full left-0 pt-2">
+                <div className="w-64 rounded-xl border border-border bg-background shadow-lg p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  {loansSubMenu.map((item) => (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent transition-colors cursor-pointer"
+                    >
+                      <item.icon className="h-5 w-5 mt-0.5 text-primary flex-shrink-0" />
+                      <div>
+                        <div className="font-medium text-foreground">{item.label}</div>
+                        <div className="text-xs text-muted-foreground">{item.description}</div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
               
           {/* Other nav links */}
           {navLinks.map((link) => (
