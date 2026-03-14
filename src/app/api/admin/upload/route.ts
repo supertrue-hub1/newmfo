@@ -35,9 +35,14 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create uploads directory if not exists
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'blog');
-    console.log('[Upload] Uploads directory:', uploadsDir);
+    // Use /var/www/uploads for production (nginx-served)
+    // or public/uploads for development
+    const isProduction = process.env.NODE_ENV === 'production';
+    const uploadsDir = isProduction 
+      ? '/var/www/uploads/blog'
+      : path.join(process.cwd(), 'public', 'uploads', 'blog');
+    
+    console.log('[Upload] Uploads directory:', uploadsDir, '(production:', isProduction, ')');
     
     try {
       await access(uploadsDir);
