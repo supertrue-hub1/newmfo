@@ -1,4 +1,5 @@
 import type { BlogPost, TocItem } from '@/types/blog';
+import type { FAQItem } from '@/contexts/page-faq-context';
 
 // Calculate reading time from content
 export function calculateReadingTime(content: string): number {
@@ -41,6 +42,69 @@ export function extractHeadings(content: string): TocItem[] {
   return headings;
 }
 
+// Extract FAQ blocks from HTML content
+export function extractFAQsFromContent(content: string): FAQItem[] {
+  const faqs: FAQItem[] = [];
+  
+  // Pattern 1: <div data-faq="true" data-question="..." data-answer="...">
+  const divPattern = /<div[^>]*data-faq="true"[^>]*data-question="([^"]*)"[^>]*data-answer="([^"]*)"[^>]*><\/div>/gi;
+  
+  let match;
+  while ((match = divPattern.exec(content)) !== null) {
+    faqs.push({
+      question: decodeHTMLEntities(match[1]),
+      answer: decodeHTMLEntities(match[2]),
+    });
+  }
+  
+  // Pattern 2: <faq-block question="..." answer="..."></faq-block>
+  const faqBlockPattern = /<faq-block[^>]*question="([^"]*)"[^>]*answer="([^"]*)"[^>]*><\/faq-block>/gi;
+  
+  while ((match = faqBlockPattern.exec(content)) !== null) {
+    faqs.push({
+      question: decodeHTMLEntities(match[1]),
+      answer: decodeHTMLEntities(match[2]),
+    });
+  }
+  
+  // Pattern 3: JSON-LD embedded FAQ
+  const jsonPattern = /<script[^>]*type="application\/faq\+json"[^>]*>([\s\S]*?)<\/script>/gi;
+  
+  while ((match = jsonPattern.exec(content)) !== null) {
+    try {
+      const data = JSON.parse(match[1]);
+      if (Array.isArray(data)) {
+        data.forEach(item => {
+          if (item.question && item.answer) {
+            faqs.push(item);
+          }
+        });
+      }
+    } catch (e) {
+      // Invalid JSON, skip
+    }
+  }
+  
+  return faqs;
+}
+
+// Helper to decode HTML entities
+function decodeHTMLEntities(text: string): string {
+  const entities: Record<string, string> = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&#x27;': "'",
+    '&#x2F;': '/',
+    '&#x60;': '`',
+    '&#x3D;': '=',
+  };
+  
+  return text.replace(/&[^;]+;/g, (entity) => entities[entity] || entity);
+}
+
 // Generate slug from title
 export function generateSlug(title: string): string {
   return title
@@ -66,4 +130,12 @@ export function formatViewsCount(count: number): string {
     return `${(count / 1000).toFixed(1)}K`;
   }
   return count.toString();
+}
+
+// Clean HTML for Schema.org
+export function cleanHtmlForSchema(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

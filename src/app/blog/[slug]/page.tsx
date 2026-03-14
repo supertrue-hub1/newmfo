@@ -10,10 +10,11 @@ import {
   PopularOffersSidebar,
   BlogCard 
 } from '@/components/blog';
+import { FAQSchema } from '@/components/seo/faq-schema';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Eye, ChevronRight, Calendar, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { formatReadingTime, formatPostDate, extractHeadings } from '@/lib/blog/utils';
+import { formatReadingTime, formatPostDate, extractHeadings, extractFAQsFromContent } from '@/lib/blog/utils';
 
 // Disable cache
 export const revalidate = 0;
@@ -121,6 +122,9 @@ export default async function BlogPostPage({
   // Extract headings for TOC
   const headings = extractHeadings(post.content);
 
+  // Extract FAQs from content for Schema.org
+  const faqs = extractFAQsFromContent(post.content);
+
   // Transform related posts
   const transformedRelatedPosts = relatedPosts.map((p) => ({
     id: p.id,
@@ -160,11 +164,14 @@ export default async function BlogPostPage({
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      {/* JSON-LD Schema */}
+      {/* JSON-LD Schema - Article */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(generateArticleSchema(post)) }}
       />
+      
+      {/* JSON-LD Schema - FAQ (if any) */}
+      {faqs.length > 0 && <FAQSchema items={faqs} />}
       
       <Header />
       

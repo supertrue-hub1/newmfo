@@ -9,3 +9,4 @@ export { TableOfContents } from './table-of-contents';
 export { AuthorBio } from './author-bio';
 export { CategoryFilter } from './category-filter';
 export { PopularOffersSidebar } from './popular-offers-sidebar';
+export { ContentRenderer, extractAllFAQs } from './content-renderer';
