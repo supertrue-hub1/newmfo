@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { ChevronRight, MapPin, CreditCard, Clock, Star } from 'lucide-react';
 import Link from 'next/link';
 
-export const revalidate = 0;
+export const revalidate = 3600;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   return Object.keys(CITIES).map(city => ({ city }));
