@@ -22,7 +22,10 @@ export const metadata: Metadata = {
   keywords: ["займ онлайн", "мфо", "микрозайм", "займ на карту", "займ без отказа", "срочный займ", "займ под 0"],
   authors: [{ name: "cashpeek" }],
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
   },
   openGraph: {
     title: "cashpeek — Сравнить займы онлайн на карту",
