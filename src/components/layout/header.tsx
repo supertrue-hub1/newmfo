@@ -5,6 +5,11 @@ import { useTheme } from 'next-themes';
 import { Menu, X, CreditCard, Scale, BookOpen, FileText, User, Sun, Moon, ChevronDown, Smartphone, CreditCard as CardIcon, CheckCircle, AlertCircle, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { CitySelector } from '../header/city-selector';
+
+// В JSX Header (nav/flex)
+<CitySelector />
+
 
 interface HeaderProps {
   className?: string;

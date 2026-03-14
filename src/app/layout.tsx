@@ -4,6 +4,15 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 
+import { CityProvider } from '@/contexts/city-context';
+
+// ...
+<CityProvider>
+  <Header />
+  {children}
+</CityProvider>
+
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
