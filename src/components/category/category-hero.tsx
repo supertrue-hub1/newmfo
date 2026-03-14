@@ -16,8 +16,13 @@ interface CategoryHeroProps {
 }
 
 export function CategoryHero({ config, offersCount, onApplyFilters }: CategoryHeroProps) {
+  const [mounted, setMounted] = React.useState(false);
   const [amount, setAmount] = React.useState(15000);
   const [term, setTerm] = React.useState(14);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const formatAmount = (value: number) => {
     return new Intl.NumberFormat('ru-RU').format(value);
@@ -125,14 +130,19 @@ export function CategoryHero({ config, offersCount, onApplyFilters }: CategoryHe
                         {formatAmount(amount)} ₽
                       </span>
                     </div>
-                    <Slider
-                      value={[amount]}
-                      min={1000}
-                      max={100000}
-                      step={1000}
-                      onValueChange={([v]) => setAmount(v)}
-                      className="py-2"
-                    />
+                    {mounted && (
+                      <Slider
+                        value={[amount]}
+                        min={1000}
+                        max={100000}
+                        step={1000}
+                        onValueChange={([v]) => setAmount(v)}
+                        className="py-2"
+                      />
+                    )}
+                    {!mounted && (
+                      <div className="h-5 bg-slate-100 rounded-full" />
+                    )}
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>1 000 ₽</span>
                       <span>100 000 ₽</span>
@@ -147,14 +157,19 @@ export function CategoryHero({ config, offersCount, onApplyFilters }: CategoryHe
                         {term} {term === 1 ? 'день' : term < 5 ? 'дня' : 'дней'}
                       </span>
                     </div>
-                    <Slider
-                      value={[term]}
-                      min={1}
-                      max={30}
-                      step={1}
-                      onValueChange={([v]) => setTerm(v)}
-                      className="py-2"
-                    />
+                    {mounted && (
+                      <Slider
+                        value={[term]}
+                        min={1}
+                        max={30}
+                        step={1}
+                        onValueChange={([v]) => setTerm(v)}
+                        className="py-2"
+                      />
+                    )}
+                    {!mounted && (
+                      <div className="h-5 bg-slate-100 rounded-full" />
+                    )}
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>1 день</span>
                       <span>30 дней</span>

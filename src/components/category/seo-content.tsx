@@ -13,18 +13,14 @@ interface SeoContentProps {
 
 export function SeoContent({ content, title, className }: SeoContentProps) {
   const [expanded, setExpanded] = React.useState(false);
-  
-  // На мобильных по умолчанию свёрнут, на десктопе — развёрнут
-  const [isMobile, setIsMobile] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
   
   React.useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    setMounted(true);
   }, []);
 
-  const showExpandButton = isMobile && content.length > 300;
+  // На мобильных по умолчанию свёрнут
+  const showExpandButton = mounted && content.length > 300;
   const maxHeight = expanded || !showExpandButton ? 'none' : '200px';
 
   return (
