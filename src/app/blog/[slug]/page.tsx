@@ -1,269 +1,364 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Header, Footer } from '@/components/layout';
+import { db } from '@/lib/db';
+import { 
+  ReadingProgress, 
+  TableOfContents, 
+  AuthorBio, 
+  BlogCtaBox,
+  PopularOffersSidebar,
+  BlogCard 
+} from '@/components/blog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Clock, User, ChevronRight, ArrowLeft, Share2, Bookmark } from 'lucide-react';
+import { Clock, Eye, ChevronRight, Calendar, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { ContextualFAQ } from '@/components/blog/contextual-faq';
-import { FAQSchema } from '@/components/seo/faq-schema';
-import { PageFAQProvider } from '@/contexts/page-faq-context';
-import { exampleArticleData, extractFAQsFromSections, type ArticleSection } from '@/lib/blog/faq-utils';
+import { formatReadingTime, formatPostDate, extractHeadings } from '@/lib/blog/utils';
 
-interface BlogPostPageProps {
-  params: Promise<{
-    slug: string;
-  }>;
-}
+// Disable cache
+export const revalidate = 0;
 
-// Генерация метаданных для SEO
-export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
+// Generate metadata for SEO
+export async function generateMetadata({ 
+  params 
+}: { 
+  params: Promise<{ slug: string }> 
+}): Promise<Metadata> {
   const { slug } = await params;
   
-  // В реальном приложении здесь будет запрос к CMS/API
-  if (slug !== exampleArticleData.slug) {
+  const post = await db.blogPost.findUnique({
+    where: { slug },
+    include: { category: true, author: true },
+  });
+
+  if (!post) {
     return { title: 'Статья не найдена' };
   }
 
-  const faqs = extractFAQsFromSections(exampleArticleData.sections);
-
   return {
-    title: `${exampleArticleData.title} | Блог`,
-    description: exampleArticleData.excerpt,
+    title: post.metaTitle || `${post.title} | Блог`,
+    description: post.metaDescription || post.excerpt || '',
+    keywords: post.keywords,
     openGraph: {
-      title: exampleArticleData.title,
-      description: exampleArticleData.excerpt,
+      title: post.metaTitle || post.title,
+      description: post.metaDescription || post.excerpt || '',
       type: 'article',
-      publishedTime: exampleArticleData.date,
-      authors: [exampleArticleData.author.name],
-    },
-    // Дополнительные метаданные для статьи с FAQ
-    other: {
-      'article:section': exampleArticleData.category,
+      publishedTime: post.publishedAt?.toISOString(),
+      authors: post.author?.name ? [post.author.name] : undefined,
+      images: post.featuredImage ? [post.featuredImage] : undefined,
     },
   };
 }
 
-// Генерация статических путей (для SSG)
-export async function generateStaticParams() {
-  return [
-    { slug: exampleArticleData.slug },
-  ];
+// Generate JSON-LD for SEO
+function generateArticleSchema(post: any) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.excerpt || post.metaDescription,
+    image: post.featuredImage,
+    datePublished: post.publishedAt,
+    dateModified: post.updatedAt,
+    author: post.author ? {
+      '@type': 'Person',
+      name: post.author.name,
+    } : undefined,
+    publisher: {
+      '@type': 'Organization',
+      name: 'CashPeek',
+    },
+  };
 }
 
-export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { slug } = await params;
+// Fetch post data
+async function getPostData(slug: string) {
+  const [post, relatedPosts, offers] = await Promise.all([
+    db.blogPost.findUnique({
+      where: { slug },
+      include: { category: true, author: true },
+    }),
+    db.blogPost.findMany({
+      where: { 
+        status: 'published',
+        slug: { not: slug },
+      },
+      include: { category: true },
+      take: 3,
+      orderBy: { publishedAt: 'desc' },
+    }),
+    db.loanOffer.findMany({
+      where: { 
+        status: 'published',
+        isFeatured: true,
+      },
+      take: 5,
+      orderBy: { rating: 'desc' },
+    }),
+  ]);
 
-  // В реальном приложении здесь будет запрос к CMS/API
-  if (slug !== exampleArticleData.slug) {
+  return { post, relatedPosts, offers };
+}
+
+export default async function BlogPostPage({ 
+  params 
+}: { 
+  params: Promise<{ slug: string }> 
+}) {
+  const { slug } = await params;
+  const { post, relatedPosts, offers } = await getPostData(slug);
+
+  if (!post || post.status !== 'published') {
     notFound();
   }
 
-  const article = exampleArticleData;
-  const allFAQs = extractFAQsFromSections(article.sections);
+  // Increment views
+  await db.blogPost.update({
+    where: { id: post.id },
+    data: { viewsCount: { increment: 1 } },
+  });
+
+  // Extract headings for TOC
+  const headings = extractHeadings(post.content);
+
+  // Transform related posts
+  const transformedRelatedPosts = relatedPosts.map((p) => ({
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    excerpt: p.excerpt,
+    content: p.content,
+    featuredImage: p.featuredImage,
+    readingTime: p.readingTime,
+    status: p.status as 'published',
+    isFeatured: p.isFeatured,
+    viewsCount: p.viewsCount,
+    likesCount: p.likesCount,
+    publishedAt: p.publishedAt?.toISOString(),
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+    category: p.category ? {
+      id: p.category.id,
+      name: p.category.name,
+      slug: p.category.slug,
+      color: p.category.color,
+    } : undefined,
+  }));
+
+  // Transform offers
+  const transformedOffers = offers.map((offer) => ({
+    id: offer.id,
+    name: offer.name,
+    slug: offer.slug,
+    rating: offer.rating,
+    maxAmount: offer.maxAmount,
+    firstLoanRate: offer.firstLoanRate ?? undefined,
+    decisionTime: offer.decisionTime,
+  }));
+
+  const categoryColor = post.category?.color || '#10b981';
 
   return (
-    <>
-      {/* JSON-LD Schema для FAQ - рендерится один раз со всеми вопросами */}
-      <FAQSchema items={allFAQs} />
-
-      <PageFAQProvider initialFAQs={allFAQs}>
-        <div className="flex min-h-screen flex-col">
-          <Header />
-
-          <main className="flex-1">
-            {/* Breadcrumbs */}
-            <div className="bg-muted/30 py-3">
-              <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Link href="/" className="hover:text-primary transition-colors">
-                    Главная
-                  </Link>
+    <div className="flex min-h-screen flex-col bg-white">
+      {/* JSON-LD Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateArticleSchema(post)) }}
+      />
+      
+      <Header />
+      
+      {/* Reading Progress */}
+      <ReadingProgress />
+      
+      <main className="flex-1">
+        {/* Hero */}
+        <header className="bg-gradient-to-b from-slate-50 to-white border-b">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-8">
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+              <Link href="/" className="hover:text-primary transition-colors">Главная</Link>
+              <ChevronRight className="h-4 w-4" />
+              <Link href="/blog" className="hover:text-primary transition-colors">Блог</Link>
+              {post.category && (
+                <>
                   <ChevronRight className="h-4 w-4" />
-                  <Link href="/blog" className="hover:text-primary transition-colors">
-                    Блог
+                  <Link
+                    href={`/blog?category=${post.category.slug}`}
+                    className="hover:text-primary transition-colors"
+                  >
+                    {post.category.name}
                   </Link>
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="text-foreground truncate">{article.title}</span>
-                </div>
-              </div>
+                </>
+              )}
+              <ChevronRight className="h-4 w-4" />
+              <span className="text-foreground font-medium truncate max-w-[200px]">{post.title}</span>
             </div>
 
-            {/* Article Header */}
-            <article className="py-8 md:py-12">
-              <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="max-w-3xl mx-auto">
-                  {/* Back button (mobile) */}
-                  <Link
-                    href="/blog"
-                    className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-6 md:hidden"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Назад к блогу
-                  </Link>
-
-                  {/* Meta info */}
-                  <div className="flex flex-wrap items-center gap-3 mb-4">
-                    <Badge variant="secondary" className="bg-primary/10 text-primary">
-                      {article.category}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {article.readTime}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {article.date}
-                    </span>
-                  </div>
-
-                  {/* Title */}
-                  <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
-                    {article.title}
-                  </h1>
-
-                  {/* Author */}
-                  <div className="flex items-center gap-3 mb-8 pb-8 border-b border-border">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{article.author.name}</p>
-                      <p className="text-sm text-muted-foreground">Автор статьи</p>
-                    </div>
-                  </div>
-
-                  {/* Article Content */}
-                  <div className="prose prose-neutral dark:prose-invert max-w-none">
-                    <ArticleContent sections={article.sections} />
-                  </div>
-
-                  {/* Article Footer Actions */}
-                  <div className="flex flex-wrap items-center gap-3 mt-8 pt-8 border-t border-border">
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Share2 className="h-4 w-4" />
-                      Поделиться
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Bookmark className="h-4 w-4" />
-                      Сохранить
-                    </Button>
-                  </div>
+            {/* Meta */}
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              {post.category && (
+                <Badge 
+                  style={{ backgroundColor: categoryColor }}
+                  className="text-white border-0"
+                >
+                  {post.category.name}
+                </Badge>
+              )}
+              <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                {formatReadingTime(post.readingTime)}
+              </span>
+              {post.viewsCount > 0 && (
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Eye className="h-4 w-4" />
+                  {post.viewsCount + 1} просмотров
+                </span>
+              )}
+              {post.publishedAt && (
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  {formatPostDate(post.publishedAt)}
+                </span>
+              )}
+            </div>
+            
+            {/* Title */}
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-6 leading-tight">
+              {post.title}
+            </h1>
+            
+            {/* Excerpt */}
+            {post.excerpt && (
+              <p className="text-xl text-slate-600 max-w-3xl">
+                {post.excerpt}
+              </p>
+            )}
+            
+            {/* Author */}
+            {post.author && (
+              <div className="flex items-center gap-3 mt-6 pt-6 border-t">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                  {post.author.name.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div className="font-medium text-slate-900">{post.author.name}</div>
+                  {post.author.role && (
+                    <div className="text-sm text-muted-foreground">{post.author.role}</div>
+                  )}
                 </div>
               </div>
+            )}
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-12">
+          <div className="grid gap-12 lg:grid-cols-[220px_1fr_320px]">
+            {/* TOC Sidebar - Left */}
+            <aside className="hidden lg:block">
+              <div className="sticky top-24">
+                <TableOfContents items={headings} />
+                
+                {/* Back to blog */}
+                <Link 
+                  href="/blog"
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mt-8"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Все статьи
+                </Link>
+              </div>
+            </aside>
+
+            {/* Article Content */}
+            <article>
+              {/* Featured Image */}
+              {post.featuredImage && (
+                <div className="relative aspect-video rounded-xl overflow-hidden mb-8">
+                  <img
+                    src={post.featuredImage}
+                    alt={post.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              
+              {/* CTA Box - After intro */}
+              <BlogCtaBox 
+                variant="inline"
+                title="Нужен займ?"
+                description="Сравните лучшие предложения от проверенных МФО"
+                offers={transformedOffers.slice(0, 3)}
+                className="mb-8"
+              />
+              
+              {/* Content with prose styling */}
+              <div 
+                className="prose prose-slate prose-lg max-w-none
+                  prose-headings:font-bold prose-headings:text-slate-900
+                  prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-4
+                  prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
+                  prose-p:text-slate-600 prose-p:leading-relaxed
+                  prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+                  prose-strong:text-slate-900
+                  prose-ul:text-slate-600 prose-ol:text-slate-600
+                  prose-li:marker:text-slate-400
+                  prose-blockquote:border-l-primary prose-blockquote:bg-slate-50 prose-blockquote:py-1
+                  prose-img:rounded-xl prose-img:shadow-sm
+                "
+                dangerouslySetInnerHTML={{ __html: post.content }}
+              />
+              
+              {/* CTA Box - Bottom */}
+              <BlogCtaBox 
+                variant="bottom"
+                title="Готовы выбрать займ?"
+                description="Сравните условия лучших МФО и получите деньги уже сегодня"
+                className="mt-12"
+              />
+              
+              {/* Author Bio */}
+              {post.author && (
+                <div className="mt-12">
+                  <AuthorBio author={{
+                    id: post.author.id,
+                    name: post.author.name,
+                    slug: post.author.slug,
+                    avatar: post.author.avatar || undefined,
+                    bio: post.author.bio || undefined,
+                    role: post.author.role || undefined,
+                    socialLinks: post.author.socialLinks ? JSON.parse(post.author.socialLinks) : undefined,
+                  }} />
+                </div>
+              )}
             </article>
 
-            {/* Related Articles */}
-            <section className="py-8 md:py-12 bg-muted/30">
-              <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="max-w-3xl mx-auto">
-                  <h2 className="text-xl font-semibold text-foreground mb-6">
-                    Похожие статьи
-                  </h2>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Card className="p-4 border-border hover:border-primary/30 transition-colors cursor-pointer">
-                      <p className="text-sm text-muted-foreground mb-1">Безопасность</p>
-                      <h3 className="font-medium text-foreground line-clamp-2">
-                        Безопасность онлайн-займов: как защитить свои данные
-                      </h3>
-                    </Card>
-                    <Card className="p-4 border-border hover:border-primary/30 transition-colors cursor-pointer">
-                      <p className="text-sm text-muted-foreground mb-1">Финансы</p>
-                      <h3 className="font-medium text-foreground line-clamp-2">
-                        Как улучшить кредитную историю
-                      </h3>
-                    </Card>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </main>
-
-          <Footer />
+            {/* Offers Sidebar - Right */}
+            <aside className="hidden lg:block">
+              <PopularOffersSidebar offers={transformedOffers} />
+            </aside>
+          </div>
         </div>
-      </PageFAQProvider>
-    </>
-  );
-}
 
-/**
- * Серверный компонент для рендеринга контента статьи
- */
-function ArticleContent({ sections }: { sections: ArticleSection[] }) {
-  return (
-    <>
-      {sections.map((section, index) => {
-        switch (section.type) {
-          case 'heading':
-            const HeadingTag = `h${section.level}` as keyof JSX.IntrinsicElements;
-            const headingClasses = {
-              1: 'text-3xl font-bold mt-8 mb-4',
-              2: 'text-2xl font-semibold mt-8 mb-4',
-              3: 'text-xl font-semibold mt-6 mb-3',
-              4: 'text-lg font-medium mt-4 mb-2',
-              5: 'text-base font-medium mt-4 mb-2',
-              6: 'text-sm font-medium mt-3 mb-2',
-            };
-            return (
-              <HeadingTag
-                key={index}
-                className={headingClasses[section.level || 2]}
-              >
-                {section.content}
-              </HeadingTag>
-            );
+        {/* Related Posts */}
+        {transformedRelatedPosts.length > 0 && (
+          <section className="py-12 md:py-16 bg-slate-50 border-t">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">
+                Похожие статьи
+              </h2>
+              <div className="grid gap-6 md:grid-cols-3">
+                {transformedRelatedPosts.map((relatedPost) => (
+                  <BlogCard key={relatedPost.id} post={relatedPost} />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+      </main>
 
-          case 'text':
-            return (
-              <p key={index} className="text-muted-foreground leading-relaxed mb-4">
-                {section.content}
-              </p>
-            );
-
-          case 'faq':
-            if (!section.items?.length) return null;
-            return (
-              <ContextualFAQ
-                key={index}
-                items={section.items}
-                title="Часто задаваемые вопросы"
-                variant="default"
-              />
-            );
-
-          case 'quote':
-            return (
-              <blockquote
-                key={index}
-                className="border-l-4 border-primary pl-4 italic text-muted-foreground my-6"
-              >
-                {section.content}
-                {section.author && (
-                  <footer className="text-sm mt-2">— {section.author}</footer>
-                )}
-              </blockquote>
-            );
-
-          case 'image':
-            return (
-              <figure key={index} className="my-6">
-                <img
-                  src={section.src}
-                  alt={section.alt || ''}
-                  className="rounded-lg w-full"
-                />
-                {section.alt && (
-                  <figcaption className="text-sm text-muted-foreground mt-2 text-center">
-                    {section.alt}
-                  </figcaption>
-                )}
-              </figure>
-            );
-
-          default:
-            return null;
-        }
-      })}
-    </>
+      <Footer />
+    </div>
   );
 }

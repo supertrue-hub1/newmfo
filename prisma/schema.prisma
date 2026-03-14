@@ -227,3 +227,107 @@ model Setting {
 
   @@index([category])
 }
+
+// ============================================
+// Blog System
+// ============================================
+
+model BlogCategory {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  color       String?  // hex color for UI
+  icon        String?  // lucide icon name
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  posts       BlogPost[]
+  
+  @@index([slug])
+}
+
+model BlogAuthor {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  avatar      String?
+  bio         String?
+  role        String?  // "Финансовый эксперт", "Кредитный специалист"
+  socialLinks String? // JSON: { twitter, telegram, linkedin }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  posts       BlogPost[]
+  
+  @@index([slug])
+}
+
+model BlogPost {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String   @unique
+  
+  // Content
+  excerpt       String?  // Short description for cards
+  content       String   // HTML or MDX content
+  featuredImage String?  // Main image URL
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  keywords        String? // comma-separated
+  
+  // Relations
+  categoryId    String?
+  category      BlogCategory? @relation(fields: [categoryId], references: [id])
+  authorId      String?
+  author        BlogAuthor? @relation(fields: [authorId], references: [id])
+  
+  // Linked offers for sidebar CTA
+  linkedOfferIds String? // JSON array of offer IDs
+  
+  // Reading
+  readingTime   Int      @default(5) // minutes
+  
+  // Status
+  status        String   @default("draft") // draft, published, archived
+  isFeatured    Boolean  @default(false)
+  
+  // Analytics
+  viewsCount    Int      @default(0)
+  likesCount    Int      @default(0)
+  
+  // Timestamps
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([slug])
+  @@index([status])
+  @@index([categoryId])
+  @@index([publishedAt])
+}
+
+model BlogTag {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  
+  posts     BlogPostTag[]
+  
+  @@index([slug])
+}
+
+model BlogPostTag {
+  postId  String
+  tagId   String
+  
+  post    BlogPost   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag     BlogTag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@id([postId, tagId])
+}
