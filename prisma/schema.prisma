@@ -316,13 +316,23 @@ model BlogPost {
 
 model BlogTag {
   id        String   @id @default(cuid())
-  name      String
+  name      String   @unique
   slug      String   @unique
   createdAt DateTime @default(now())
   
   posts     BlogPostTag[]
   
   @@index([slug])
+}
+
+model BlogPostTag {
+  postId  String
+  tagId   String
+  
+  post    BlogPost   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag     BlogTag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@id([postId, tagId])
 }
 
 model BlogPostTag {
@@ -354,6 +364,7 @@ model SeoCity {
   
   // Relations
   seoPages    SeoPage[]
+  faqs        SeoFaq[]
   
   @@index([slug])
   @@index([isActive])
@@ -383,6 +394,7 @@ model SeoLoanType {
   
   // Relations
   seoPages    SeoPage[]
+  faqs        SeoFaq[]
   
   @@index([slug])
   @@index([isActive])
