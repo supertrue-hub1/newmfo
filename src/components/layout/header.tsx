@@ -23,11 +23,12 @@ const navLinks = [
 ];
 
 const loansSubMenu = [
-  { href: '#offers', label: 'Займы онлайн', icon: Smartphone, description: 'Быстрое оформление онлайн' },
-  { href: '#offers?filter=card', label: 'Займы на карту', icon: CardIcon, description: 'Мгновенное зачисление' },
-  { href: '#offers?filter=no-refusal', label: 'Займы без отказа', icon: CheckCircle, description: 'Высокий процент одобрения' },
-  { href: '#offers?filter=bad-credit', label: 'Займы с плохой КИ', icon: AlertCircle, description: 'Без проверки кредитной истории' },
-  { href: '#offers?filter=no-interest', label: 'Займы без процентов', icon: Percent, description: '0% для новых клиентов' },
+  { href: '/zaimy', label: 'Все займы', icon: Smartphone, description: 'Сравнить все предложения' },
+  { href: '/zaimy/onlain', label: 'Займы онлайн', icon: Smartphone, description: 'Быстрое оформление онлайн' },
+  { href: '/zaimy/na-kartu', label: 'Займы на карту', icon: CardIcon, description: 'Мгновенное зачисление' },
+  { href: '/zaimy/bez-otkaza', label: 'Займы без отказа', icon: CheckCircle, description: 'Высокий процент одобрения' },
+  { href: '/zaimy/bez-proverki-ki', label: 'Займы с плохой КИ', icon: AlertCircle, description: 'Без проверки кредитной истории' },
+  { href: '/zaimy/bez-procentov', label: 'Займы без процентов', icon: Percent, description: '0% для новых клиентов' },
 ];
 
 // Simple theme toggle button
@@ -94,15 +95,27 @@ export function Header({ className }: HeaderProps) {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex md:items-center md:gap-8">
-          {/* Loans Dropdown */}
-          <DropdownMenu>
+          {/* Loans Dropdown с hover */}
+          <DropdownMenu openDelay={0} closeDelay={200}>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+              <button className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus:text-primary outline-none">
                 Займы
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuContent 
+              align="start" 
+              className="w-64"
+              sideOffset={8}
+              onMouseLeave={(e) => {
+                // Не закрывать при наведении на контент
+                const rect = e.currentTarget.getBoundingClientRect();
+                const related = e.relatedTarget as HTMLElement;
+                if (related && !rect.contains(related.getBoundingClientRect())) {
+                  // Оставим dropdown открытым
+                }
+              }}
+            >
               {loansSubMenu.map((item) => (
                 <DropdownMenuItem key={item.href} asChild>
                   <a
@@ -119,7 +132,7 @@ export function Header({ className }: HeaderProps) {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-
+              
           {/* Other nav links */}
           {navLinks.map((link) => (
             <a
