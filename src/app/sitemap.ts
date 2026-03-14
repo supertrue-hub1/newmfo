@@ -143,20 +143,35 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('[Sitemap] Error fetching blog:', error);
   }
 
-  // === СТАТИЧЕСКИЕ СТРАНИЦЫ ===
-  const staticPages = [
-    '/kontakty',
-    '/o-nas',
-    '/politika-konfidentsialnosti',
-    '/polzovatelskoe-soglashenie',
+  // === INFO СТРАНИЦЫ (высокий приоритет) ===
+  const infoPages = [
+    { url: '/info/o-nas', priority: 0.7, changefreq: 'monthly' as const },
+    { url: '/info/kontakty', priority: 0.7, changefreq: 'monthly' as const },
+    { url: '/info/sotrudnichestvo', priority: 0.6, changefreq: 'monthly' as const },
   ];
 
-  staticPages.forEach(page => {
+  infoPages.forEach(page => {
     urls.push({
-      url: `${BASE_URL}${page}`,
+      url: `${BASE_URL}${page.url}`,
       lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.3,
+      changeFrequency: page.changefreq,
+      priority: page.priority,
+    });
+  });
+
+  // === LEGAL / DOCS СТРАНИЦЫ (низкий приоритет) ===
+  const legalPages = [
+    { url: '/docs/privacy', priority: 0.3, changefreq: 'yearly' as const },
+    { url: '/docs/terms', priority: 0.3, changefreq: 'yearly' as const },
+    { url: '/docs/offerta', priority: 0.3, changefreq: 'yearly' as const },
+  ];
+
+  legalPages.forEach(page => {
+    urls.push({
+      url: `${BASE_URL}${page.url}`,
+      lastModified: now,
+      changeFrequency: page.changefreq,
+      priority: page.priority,
     });
   });
 
