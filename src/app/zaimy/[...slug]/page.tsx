@@ -159,28 +159,45 @@ async function getOffers() {
 }
   
 // Форматирование оффера для компонентов
-function formatOffer(offer: Awaited<ReturnType<typeof db.loanOffer.findMany>>[0]) {
+function formatOffer(offer: Awaited<ReturnType<typeof db.loanOffer.findMany>>[0]): import('@/types/offer').Offer {
   return {
     id: offer.id,
     name: offer.name,
     slug: offer.slug,
-    logo: offer.logo,
+    logo: offer.logo || undefined,
     rating: offer.rating,
     minAmount: offer.minAmount,
     maxAmount: offer.maxAmount,
     minTerm: offer.minTerm || 1,
     maxTerm: offer.maxTerm || 30,
-    firstLoanRate: offer.firstLoanRate,
     baseRate: offer.baseRate || 0.8,
+    firstLoanRate: offer.firstLoanRate ?? undefined,
     decisionTime: offer.decisionTime || 15,
     approvalRate: offer.approvalRate || 85,
-    features: offer.tags?.map((t) => t.tag.slug) || [],
+    features: offer.tags?.map((t) => {
+      const slugToFeature: Record<string, import('@/types/offer').OfferFeature> = {
+        'first-loan-zero': 'first_loan_zero',
+        'no-overpayments': 'no_overpayments',
+        'prolongation': 'prolongation',
+        'early-repayment': 'early_repayment',
+        'no-hidden-fees': 'no_hidden_fees',
+        'online-approval': 'online_approval',
+        'one-document': 'one_document',
+        'loyalty-program': 'loyalty_program',
+      };
+      return slugToFeature[t.tag.slug] || 'online_approval';
+    }).filter(Boolean) || ['online_approval'],
+    payoutMethods: offer.payoutMethods ? JSON.parse(offer.payoutMethods) : ['card'],
     badCreditOk: offer.badCreditOk ?? false,
     noCalls: offer.noCalls ?? false,
     roundTheClock: offer.roundTheClock ?? false,
-    payoutMethods: offer.payoutMethods ? JSON.parse(offer.payoutMethods) : ['card'],
-    editorNote: offer.editorNote,
-    affiliateUrl: offer.affiliateUrl,
+    minAge: offer.minAge || 18,
+    documents: offer.documents ? JSON.parse(offer.documents) : ['passport'],
+    editorNote: offer.editorNote || offer.customDescription || undefined,
+    affiliateUrl: offer.affiliateUrl || '#',
+    isFeatured: offer.isFeatured ?? false,
+    isNew: offer.isNew ?? false,
+    isPopular: offer.isPopular ?? false,
   };
 }
   
