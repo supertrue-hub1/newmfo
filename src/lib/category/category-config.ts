@@ -558,3 +558,19 @@ export function getCategoryConfig(slug: string): CategoryConfig | null {
 export function getAllCategorySlugs(): CategorySlug[] {
   return Object.keys(CATEGORY_CONFIG) as CategorySlug[];
 }
+
+// Генерация FAQ Schema
+export function generateFaqSchema(items: FaqItem[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
+  };
+}

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Header, Footer } from '@/components/layout';
 import { db } from '@/lib/db';
 import { LOAN_CATEGORIES, CITIES, AMOUNTS, type LoanCategorySlug, type CitySlug } from '@/lib/seo/slugs';
-import { getCategoryConfig } from '@/lib/category/category-config';
+import { getCategoryConfig, generateFaqSchema } from '@/lib/category/category-config';
 import { generateBreadcrumb } from '@/lib/seo/metadata';
 import {
   CategoryHero,
@@ -13,7 +13,6 @@ import {
   HowToChoose,
   WhoSuits,
   CategoryFaq,
-  generateFaqSchema,
   InternalLinks,
   TrustBlock,
 } from '@/components/category';

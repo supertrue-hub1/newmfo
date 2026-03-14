@@ -44,18 +44,3 @@ export function CategoryFaq({ items, title = 'Часто задаваемые в
   );
 }
 
-// Генерация FAQ Schema (для server component)
-export function generateFaqSchema(items: FaqItem[]) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: items.map((item) => ({
-      '@type': 'Question',
-      name: item.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: item.answer,
-      },
-    })),
-  };
-}
