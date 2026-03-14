@@ -73,10 +73,10 @@ const offerFormSchema = z.object({
   isNew: z.boolean(),
   isPopular: z.boolean(),
   status: z.enum(["draft", "published", "archived"]),
-  metaTitle: z.string().max(60, "Максимум 60 символов").optional(),
-  metaDescription: z.string().max(160, "Максимум 160 символов").optional(),
-  customDescription: z.string().optional(),
-  affiliateUrl: z.string().url("Должен быть валидный URL"),
+  metaTitle: z.string().max(60, "Максимум 60 символов").optional().or(z.literal("")),
+  metaDescription: z.string().max(160, "Максимум 160 символов").optional().or(z.literal("")),
+  customDescription: z.string().optional().or(z.literal("")),
+  affiliateUrl: z.string().optional().or(z.literal("")),
   showOnHomepage: z.boolean(),
   sortOrder: z.number().min(0).max(100),
 })
@@ -210,19 +210,29 @@ export function OfferEditDialog({ offer, open, onOpenChange, onSave }: OfferEdit
   }, [offer, form])
 
   const onSubmit = async (data: OfferFormValues) => {
+    console.log("Form onSubmit called with data:", data)
     setIsSaving(true)
     try {
       if (onSave) {
+        console.log("Calling onSave callback")
         await onSave(data)
       } else {
         // Fallback: save directly via API
         if (offer) {
+          console.log("Saving via API, offer ID:", offer.id)
           const response = await fetch(`/api/offers/${offer.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
           })
-          if (!response.ok) throw new Error('Failed to save')
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            console.error("API error:", errorData)
+            throw new Error(errorData.error || 'Failed to save')
+          }
+          
+          console.log("API save successful")
         }
         toast.success("Изменения сохранены", {
           description: `Оффер "${data.name}" успешно обновлён`,
@@ -230,8 +240,9 @@ export function OfferEditDialog({ offer, open, onOpenChange, onSave }: OfferEdit
         onOpenChange(false)
       }
     } catch (error) {
+      console.error("Submit error:", error)
       toast.error("Ошибка сохранения", {
-        description: "Не удалось сохранить изменения",
+        description: error instanceof Error ? error.message : "Не удалось сохранить изменения",
       })
     } finally {
       setIsSaving(false)
@@ -377,7 +388,12 @@ export function OfferEditDialog({ offer, open, onOpenChange, onSave }: OfferEdit
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
+          <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            console.log("Form validation errors:", errors)
+            toast.error("Ошибка валидации", {
+              description: Object.keys(errors).map(key => `${key}: ${errors[key]?.message}`).join(", ")
+            })
+          })}>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="px-6 pt-4">
                 <TabsList className="grid w-full grid-cols-4">

@@ -93,40 +93,32 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     
+    // Build update data only with provided fields
+    const updateData: any = {};
+    
+    // Basic fields from edit form
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.slug !== undefined) updateData.slug = body.slug;
+    if (body.rating !== undefined) updateData.rating = body.rating;
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.isFeatured !== undefined) updateData.isFeatured = body.isFeatured;
+    if (body.isNew !== undefined) updateData.isNew = body.isNew;
+    if (body.isPopular !== undefined) updateData.isPopular = body.isPopular;
+    if (body.showOnHomepage !== undefined) updateData.showOnHomepage = body.showOnHomepage;
+    if (body.sortOrder !== undefined) updateData.sortOrder = body.sortOrder;
+    if (body.affiliateUrl !== undefined) updateData.affiliateUrl = body.affiliateUrl;
+    if (body.metaTitle !== undefined) updateData.metaTitle = body.metaTitle;
+    if (body.metaDescription !== undefined) updateData.metaDescription = body.metaDescription;
+    if (body.customDescription !== undefined) updateData.customDescription = body.customDescription;
+    if (body.editorNote !== undefined) updateData.customDescription = body.editorNote;
+    
+    // Reset review flag after update
+    updateData.requiresReview = false;
+    updateData.reviewReason = null;
+    
     const offer = await db.loanOffer.update({
       where: { id },
-      data: {
-        name: body.name,
-        slug: body.slug,
-        rating: body.rating,
-        minAmount: body.minAmount,
-        maxAmount: body.maxAmount,
-        minTerm: body.minTerm,
-        maxTerm: body.maxTerm,
-        baseRate: body.baseRate,
-        firstLoanRate: body.firstLoanRate,
-        decisionTime: body.decisionTime,
-        approvalRate: body.approvalRate,
-        payoutMethods: body.payoutMethods ? JSON.stringify(body.payoutMethods) : undefined,
-        features: body.features ? JSON.stringify(body.features) : undefined,
-        badCreditOk: body.badCreditOk,
-        noCalls: body.noCalls,
-        roundTheClock: body.roundTheClock,
-        minAge: body.minAge,
-        documents: body.documents ? JSON.stringify(body.documents) : undefined,
-        affiliateUrl: body.affiliateUrl,
-        isFeatured: body.isFeatured,
-        isNew: body.isNew,
-        isPopular: body.isPopular,
-        status: body.status,
-        showOnHomepage: body.showOnHomepage,
-        sortOrder: body.sortOrder,
-        metaTitle: body.metaTitle,
-        metaDescription: body.metaDescription,
-        customDescription: body.customDescription || body.editorNote,
-        requiresReview: false, // Reset review flag after update
-        reviewReason: null,
-      },
+      data: updateData,
     });
 
     return NextResponse.json(offer);
