@@ -2,8 +2,14 @@
 
 import * as React from 'react';
 import { useTheme } from 'next-themes';
-import { Menu, X, CreditCard, Scale, BookOpen, FileText, User, Sun, Moon } from 'lucide-react';
+import { Menu, X, CreditCard, Scale, BookOpen, FileText, User, Sun, Moon, ChevronDown, Smartphone, CreditCard as CardIcon, CheckCircle, AlertCircle, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
@@ -11,10 +17,17 @@ interface HeaderProps {
 }
 
 const navLinks = [
-  { href: '#offers', label: 'Займы', icon: CreditCard },
   { href: '/sravnit', label: 'Сравнить', icon: Scale },
   { href: '/blog', label: 'Блог', icon: BookOpen },
   { href: '#faq', label: 'FAQ', icon: FileText },
+];
+
+const loansSubMenu = [
+  { href: '#offers', label: 'Займы онлайн', icon: Smartphone, description: 'Быстрое оформление онлайн' },
+  { href: '#offers?filter=card', label: 'Займы на карту', icon: CardIcon, description: 'Мгновенное зачисление' },
+  { href: '#offers?filter=no-refusal', label: 'Займы без отказа', icon: CheckCircle, description: 'Высокий процент одобрения' },
+  { href: '#offers?filter=bad-credit', label: 'Займы с плохой КИ', icon: AlertCircle, description: 'Без проверки кредитной истории' },
+  { href: '#offers?filter=no-interest', label: 'Займы без процентов', icon: Percent, description: '0% для новых клиентов' },
 ];
 
 // Simple theme toggle button
@@ -81,6 +94,33 @@ export function Header({ className }: HeaderProps) {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex md:items-center md:gap-8">
+          {/* Loans Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+                Займы
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64">
+              {loansSubMenu.map((item) => (
+                <DropdownMenuItem key={item.href} asChild>
+                  <a
+                    href={item.href}
+                    className="flex items-start gap-3 p-3 cursor-pointer"
+                  >
+                    <item.icon className="h-5 w-5 mt-0.5 text-primary flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-foreground">{item.label}</div>
+                      <div className="text-xs text-muted-foreground">{item.description}</div>
+                    </div>
+                  </a>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Other nav links */}
           {navLinks.map((link) => (
             <a
               key={link.href}
@@ -125,6 +165,26 @@ export function Header({ className }: HeaderProps) {
         <div className="border-t border-border bg-background/95 backdrop-blur-md md:hidden">
           <div className="container mx-auto px-4 py-4">
             <nav className="flex flex-col gap-1">
+              {/* Loans submenu header */}
+              <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Займы
+              </div>
+              {loansSubMenu.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                >
+                  <item.icon className="h-4 w-4 text-primary" />
+                  {item.label}
+                </a>
+              ))}
+              
+              {/* Divider */}
+              <div className="my-2 border-t border-border" />
+              
+              {/* Other nav links */}
               {navLinks.map((link) => (
                 <a
                   key={link.href}
