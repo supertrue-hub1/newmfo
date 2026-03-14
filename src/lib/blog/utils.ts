@@ -105,14 +105,32 @@ function decodeHTMLEntities(text: string): string {
   return text.replace(/&[^;]+;/g, (entity) => entities[entity] || entity);
 }
 
-// Generate slug from title
+// Transliteration map for Russian to Latin
+const translitMap: Record<string, string> = {
+  'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+  'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+  'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+  'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+  'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+  ' ': '-', '_': '-'
+};
+
+// Generate slug from title (supports Russian transliteration)
 export function generateSlug(title: string): string {
-  return title
+  let slug = title
     .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
     .trim();
+  
+  // Transliterate Russian characters
+  slug = slug.split('').map(char => translitMap[char] || char).join('');
+  
+  // Remove special characters, keep only alphanumeric and hyphens
+  slug = slug
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  
+  return slug || 'article';
 }
 
 // Truncate text

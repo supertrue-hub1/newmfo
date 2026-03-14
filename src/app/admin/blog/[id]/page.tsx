@@ -240,14 +240,28 @@ export default function AdminBlogEditorPage() {
       .finally(() => setLoading(false));
   }, [postId, isNew]);
 
-  // Auto-generate slug
+  // Auto-generate slug from title
   const handleTitleChange = (title: string) => {
+    const newSlug = generateSlug(title);
     setForm(prev => ({
       ...prev,
       title,
-      slug: prev.slug || generateSlug(title),
+      // Always update slug if it's empty or matches the old title pattern
+      slug: newSlug,
       metaTitle: prev.metaTitle || title.slice(0, 60),
     }));
+  };
+
+  // Update slug manually
+  const handleSlugChange = (slug: string) => {
+    // Remove invalid characters
+    const cleanSlug = slug
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    
+    setForm(prev => ({ ...prev, slug: cleanSlug }));
   };
 
   // Save post
@@ -400,15 +414,21 @@ export default function AdminBlogEditorPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label>URL-адрес</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm text-muted-foreground">/blog/</span>
+                <Label>URL-адрес статьи</Label>
+                <div className="flex items-center gap-1 mt-2">
+                  <span className="text-sm text-muted-foreground bg-muted px-2 py-2 rounded-l-md border border-r-0">
+                    /blog/
+                  </span>
                   <Input
                     value={form.slug}
-                    onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value }))}
-                    className="flex-1"
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    placeholder="url-statyi"
+                    className="rounded-l-none"
                   />
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Полный URL: <code className="bg-muted px-1 rounded">/blog/{form.slug || '...'}</code>
+                </p>
               </div>
 
               <div>
