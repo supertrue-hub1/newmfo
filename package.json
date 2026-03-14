@@ -13,7 +13,9 @@
     "db:reset": "prisma migrate reset",
     "db:seed": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} prisma/seed.ts",
     "db:seed:blog": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} prisma/blog-seed.ts",
-    "db:seed:blog-meta": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} prisma/blog-meta-seed.ts"
+    "db:seed:blog-meta": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} prisma/blog-meta-seed.ts",
+    "import:seo": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/import-seo-pages.ts",
+    "import:seo:test": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/import-seo-pages.ts --test"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
