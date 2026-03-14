@@ -196,3 +196,17 @@
   background-color: oklch(0.85 0.08 250);
   color: oklch(0.25 0.02 250);
 }
+
+/* Blog content images - responsive */
+.prose img {
+  max-width: 100%;
+  height: auto;
+  width: 100%;
+  object-fit: contain;
+}
+
+/* TipTap editor images */
+.tiptap img {
+  max-width: 100%;
+  height: auto;
+}

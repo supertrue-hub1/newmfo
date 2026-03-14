@@ -304,7 +304,7 @@ export default async function BlogPostPage({
                   prose-ul:text-slate-600 prose-ol:text-slate-600
                   prose-li:marker:text-slate-400
                   prose-blockquote:border-l-primary prose-blockquote:bg-slate-50 prose-blockquote:py-1
-                  prose-img:rounded-xl prose-img:shadow-sm
+                  prose-img:rounded-xl prose-img:shadow-sm prose-img:max-w-full prose-img:h-auto prose-img:w-full
                 "
                 dangerouslySetInnerHTML={{ __html: post.content }}
               />
