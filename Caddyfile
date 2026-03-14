@@ -12,6 +12,12 @@
 		}
 	}
 
+	# Serve uploaded files directly
+	handle /uploads/* {
+		root * /root/newmfo/public
+		file_server
+	}
+
 	handle {
 		reverse_proxy localhost:3000 {
 			header_up Host {host}
