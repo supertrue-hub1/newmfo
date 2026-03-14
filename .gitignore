@@ -52,5 +52,4 @@ server.log
 
 # SEO data (large files)
 /seo/*.csv
-/seo/*.json
 /seo/*.zip
