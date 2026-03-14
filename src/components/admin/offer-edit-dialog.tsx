@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Clock,
   Copy,
+  Loader2,
 } from "lucide-react"
 
 import {
@@ -156,11 +157,13 @@ interface OfferEditDialogProps {
   offer: AdminOffer | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSave?: (data: OfferFormValues) => Promise<void>
 }
 
-export function OfferEditDialog({ offer, open, onOpenChange }: OfferEditDialogProps) {
+export function OfferEditDialog({ offer, open, onOpenChange, onSave }: OfferEditDialogProps) {
   const [activeTab, setActiveTab] = React.useState("general")
   const [generatedDescription, setGeneratedDescription] = React.useState<string | null>(null)
+  const [isSaving, setIsSaving] = React.useState(false)
   
   const form = useForm<OfferFormValues>({
     resolver: zodResolver(offerFormSchema),
@@ -173,12 +176,12 @@ export function OfferEditDialog({ offer, open, onOpenChange }: OfferEditDialogPr
       isNew: offer?.isNew || false,
       isPopular: offer?.isPopular || false,
       status: offer?.status || "draft",
-      metaTitle: "",
-      metaDescription: "",
+      metaTitle: offer?.metaTitle || "",
+      metaDescription: offer?.metaDescription || "",
       customDescription: offer?.customDescription || "",
       affiliateUrl: offer?.affiliateUrl || "",
-      showOnHomepage: true,
-      sortOrder: 10,
+      showOnHomepage: offer?.showOnHomepage ?? true,
+      sortOrder: offer?.sortOrder || 10,
     },
   })
 
@@ -194,24 +197,45 @@ export function OfferEditDialog({ offer, open, onOpenChange }: OfferEditDialogPr
         isNew: offer.isNew,
         isPopular: offer.isPopular,
         status: offer.status,
-        metaTitle: "",
-        metaDescription: "",
+        metaTitle: offer.metaTitle || "",
+        metaDescription: offer.metaDescription || "",
         customDescription: offer.customDescription || "",
         affiliateUrl: offer.affiliateUrl,
-        showOnHomepage: true,
-        sortOrder: 10,
+        showOnHomepage: offer.showOnHomepage ?? true,
+        sortOrder: offer.sortOrder || 10,
       })
       setGeneratedDescription(null)
       setActiveTab("general")
     }
   }, [offer, form])
 
-  const onSubmit = (data: OfferFormValues) => {
-    console.log("Form submitted:", data)
-    toast.success("Изменения сохранены", {
-      description: `Оффер "${data.name}" успешно обновлён`,
-    })
-    onOpenChange(false)
+  const onSubmit = async (data: OfferFormValues) => {
+    setIsSaving(true)
+    try {
+      if (onSave) {
+        await onSave(data)
+      } else {
+        // Fallback: save directly via API
+        if (offer) {
+          const response = await fetch(`/api/offers/${offer.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          })
+          if (!response.ok) throw new Error('Failed to save')
+        }
+        toast.success("Изменения сохранены", {
+          description: `Оффер "${data.name}" успешно обновлён`,
+        })
+        onOpenChange(false)
+      }
+    } catch (error) {
+      toast.error("Ошибка сохранения", {
+        description: "Не удалось сохранить изменения",
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   // SEO Template Generation
@@ -808,10 +832,11 @@ export function OfferEditDialog({ offer, open, onOpenChange }: OfferEditDialogPr
                   </Badge>
                 )}
               </div>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
                 Отмена
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <Save className="mr-2 h-4 w-4" />
                 Сохранить
               </Button>

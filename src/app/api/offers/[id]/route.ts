@@ -1,36 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// GET /api/offers - Get all offers (with filters)
-export async function GET(request: NextRequest) {
+// GET /api/offers/[id] - Get single offer
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const featured = searchParams.get('featured');
-    const limit = searchParams.get('limit');
-
-    const where: any = {};
+    const { id } = await params;
     
-    if (status && status !== 'all') {
-      where.status = status;
-    }
-
-    if (featured === 'true') {
-      where.isFeatured = true;
-    }
-
-    const offers = await db.loanOffer.findMany({
-      where,
-      orderBy: [
-        { isFeatured: 'desc' },
-        { sortOrder: 'asc' },
-        { rating: 'desc' },
-      ],
-      ...(limit ? { take: parseInt(limit) } : {}),
+    const offer = await db.loanOffer.findUnique({
+      where: { id },
     });
 
+    if (!offer) {
+      return NextResponse.json({ error: 'Offer not found' }, { status: 404 });
+    }
+
     // Transform to frontend format
-    const transformedOffers = offers.map((offer) => ({
+    const transformedOffer = {
       id: offer.id,
       name: offer.name,
       slug: offer.slug,
@@ -87,65 +75,107 @@ export async function GET(request: NextRequest) {
         minAge: offer.minAge,
         documents: offer.documents ? JSON.parse(offer.documents) : ['passport'],
       },
-    }));
+    };
 
-    return NextResponse.json(transformedOffers);
+    return NextResponse.json(transformedOffer);
   } catch (error) {
-    console.error('Error fetching offers:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ 
-      error: 'Failed to fetch offers', 
-      details: errorMessage 
-    }, { status: 500 });
+    console.error('Error fetching offer:', error);
+    return NextResponse.json({ error: 'Failed to fetch offer' }, { status: 500 });
   }
 }
 
-// POST /api/offers - Create new offer
-export async function POST(request: NextRequest) {
+// PUT /api/offers/[id] - Update offer
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
     const body = await request.json();
     
-    const offer = await db.loanOffer.create({
+    const offer = await db.loanOffer.update({
+      where: { id },
       data: {
         name: body.name,
         slug: body.slug,
-        rating: body.rating || 4.5,
-        minAmount: body.minAmount || 1000,
-        maxAmount: body.maxAmount || 30000,
-        minTerm: body.minTerm || 7,
-        maxTerm: body.maxTerm || 30,
-        baseRate: body.baseRate || 0.8,
+        rating: body.rating,
+        minAmount: body.minAmount,
+        maxAmount: body.maxAmount,
+        minTerm: body.minTerm,
+        maxTerm: body.maxTerm,
+        baseRate: body.baseRate,
         firstLoanRate: body.firstLoanRate,
-        decisionTime: body.decisionTime || 5,
-        approvalRate: body.approvalRate || 90,
-        payoutMethods: JSON.stringify(body.payoutMethods || []),
-        features: JSON.stringify(body.features || []),
-        badCreditOk: body.badCreditOk ?? true,
-        noCalls: body.noCalls ?? true,
-        roundTheClock: body.roundTheClock ?? false,
-        minAge: body.minAge || 18,
-        documents: JSON.stringify(body.documents || ['passport']),
+        decisionTime: body.decisionTime,
+        approvalRate: body.approvalRate,
+        payoutMethods: body.payoutMethods ? JSON.stringify(body.payoutMethods) : undefined,
+        features: body.features ? JSON.stringify(body.features) : undefined,
+        badCreditOk: body.badCreditOk,
+        noCalls: body.noCalls,
+        roundTheClock: body.roundTheClock,
+        minAge: body.minAge,
+        documents: body.documents ? JSON.stringify(body.documents) : undefined,
         affiliateUrl: body.affiliateUrl,
-        isFeatured: body.isFeatured ?? false,
-        isNew: body.isNew ?? false,
-        isPopular: body.isPopular ?? false,
-        status: body.status || 'draft',
-        showOnHomepage: body.showOnHomepage ?? true,
-        sortOrder: body.sortOrder || 10,
+        isFeatured: body.isFeatured,
+        isNew: body.isNew,
+        isPopular: body.isPopular,
+        status: body.status,
+        showOnHomepage: body.showOnHomepage,
+        sortOrder: body.sortOrder,
         metaTitle: body.metaTitle,
         metaDescription: body.metaDescription,
         customDescription: body.customDescription || body.editorNote,
-        syncStatus: 'pending',
+        requiresReview: false, // Reset review flag after update
+        reviewReason: null,
       },
     });
 
     return NextResponse.json(offer);
   } catch (error) {
-    console.error('Error creating offer:', error);
+    console.error('Error updating offer:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ 
-      error: 'Failed to create offer', 
+      error: 'Failed to update offer', 
       details: errorMessage 
     }, { status: 500 });
+  }
+}
+
+// DELETE /api/offers/[id] - Delete offer
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    
+    await db.loanOffer.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting offer:', error);
+    return NextResponse.json({ error: 'Failed to delete offer' }, { status: 500 });
+  }
+}
+
+// PATCH /api/offers/[id] - Partial update (for status changes, etc.)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    
+    const offer = await db.loanOffer.update({
+      where: { id },
+      data: body,
+    });
+
+    return NextResponse.json(offer);
+  } catch (error) {
+    console.error('Error patching offer:', error);
+    return NextResponse.json({ error: 'Failed to update offer' }, { status: 500 });
   }
 }

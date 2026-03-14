@@ -18,7 +18,6 @@ import {
   ArrowUpDown,
   Edit,
   Search,
-  Filter,
   RefreshCw,
   X,
   CheckSquare,
@@ -30,7 +29,8 @@ import {
   Play,
   Archive,
   Rocket,
-  Sparkles,
+  Plus,
+  Loader2,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -62,11 +62,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { mockOffers } from "@/data/mock-offers"
 import { OfferEditDialog } from "@/components/admin/offer-edit-dialog"
-import { generateFromTemplate, getAvailableTemplates } from "@/lib/admin/seo-generator"
 
-// Расширенный тип оффера для админки
+// Тип оффера для админки
 interface AdminOffer {
   id: string
   name: string
@@ -87,14 +85,17 @@ interface AdminOffer {
   editorNote?: string
   customDescription?: string
   syncStatus: "synced" | "pending" | "error"
-  syncSource: string
+  syncSource?: string
   lastSync: string
   requiresReview: boolean
   reviewReason?: string
   views: number
   clicks: number
   conversions: number
-  tags: string[]
+  metaTitle?: string
+  metaDescription?: string
+  showOnHomepage: boolean
+  sortOrder: number
   apiData?: {
     minAmount: number
     maxAmount: number
@@ -113,39 +114,6 @@ interface AdminOffer {
     documents: string[]
   }
 }
-
-// Расширяем mock данные
-const adminOffers: AdminOffer[] = mockOffers.map((offer, index) => ({
-  ...offer,
-  status: index < 5 ? "published" as const : "draft" as const,
-  syncStatus: index === 5 ? "error" as const : index === 3 ? "pending" as const : "synced" as const,
-  syncSource: "Leads.su",
-  lastSync: new Date(Date.now() - Math.random() * 86400000 * 2).toISOString(),
-  requiresReview: index === 2 || index === 6, // Симулируем требующие проверки
-  reviewReason: index === 2 ? "Ставка изменилась на 45.2%" : index === 6 ? "Макс. сумма изменилась на 67.8%" : undefined,
-  views: Math.floor(Math.random() * 5000) + 500,
-  clicks: Math.floor(Math.random() * 500) + 50,
-  conversions: Math.floor(Math.random() * 50) + 5,
-  customDescription: "",
-  tags: index % 2 === 0 ? ["Популярные", "Быстрые"] : ["Для новичков"],
-  apiData: {
-    minAmount: offer.minAmount,
-    maxAmount: offer.maxAmount,
-    minTerm: offer.minTerm,
-    maxTerm: offer.maxTerm,
-    baseRate: offer.baseRate,
-    firstLoanRate: offer.firstLoanRate || 0,
-    decisionTime: offer.decisionTime,
-    approvalRate: offer.approvalRate,
-    payoutMethods: offer.payoutMethods,
-    features: offer.features,
-    badCreditOk: offer.badCreditOk,
-    noCalls: offer.noCalls,
-    roundTheClock: offer.roundTheClock,
-    minAge: offer.minAge,
-    documents: offer.documents,
-  },
-}))
 
 // Хук для debounce
 function useDebounce<T>(value: T, delay: number): T {
@@ -171,45 +139,51 @@ function BulkActionDialog({
   action,
   selectedCount,
   onConfirm,
+  isLoading,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  action: "activate" | "deactivate" | "publish" | "draft" | "archive" | "tag" | null
+  action: "activate" | "deactivate" | "publish" | "draft" | "archive" | "delete" | null
   selectedCount: number
-  onConfirm: (tag?: string) => void
+  onConfirm: () => void
+  isLoading: boolean
 }) {
-  const [tag, setTag] = React.useState("")
-
-  const actionConfig: Record<string, { title: string; description: string; icon: React.ReactNode }> = {
+  const actionConfig: Record<string, { title: string; description: string; icon: React.ReactNode; variant: "default" | "destructive" }> = {
     activate: {
       title: "Активировать офферы",
       description: `Вы уверены, что хотите отметить как "Рекомендуемые" ${selectedCount} офферов?`,
       icon: <CheckSquare className="h-5 w-5 text-green-500" />,
+      variant: "default",
     },
     deactivate: {
       title: "Деактивировать офферы",
       description: `Снять метку "Рекомендуемые" с ${selectedCount} офферов?`,
       icon: <Square className="h-5 w-5 text-muted-foreground" />,
+      variant: "default",
     },
     publish: {
       title: "Опубликовать офферы",
       description: `Опубликовать ${selectedCount} офферов на сайте?`,
       icon: <Rocket className="h-5 w-5 text-blue-500" />,
+      variant: "default",
     },
     draft: {
       title: "Перевести в черновики",
       description: `Снять с публикации ${selectedCount} офферов?`,
       icon: <FileText className="h-5 w-5 text-yellow-500" />,
+      variant: "default",
     },
     archive: {
       title: "Архивировать офферы",
       description: `Переместить в архив ${selectedCount} офферов?`,
       icon: <Archive className="h-5 w-5 text-orange-500" />,
+      variant: "default",
     },
-    tag: {
-      title: "Добавить тег",
-      description: `Добавить тег к ${selectedCount} офферам:`,
-      icon: <Tag className="h-5 w-5 text-purple-500" />,
+    delete: {
+      title: "Удалить офферы",
+      description: `Вы уверены, что хотите удалить ${selectedCount} офферов? Это действие нельзя отменить.`,
+      icon: <X className="h-5 w-5 text-red-500" />,
+      variant: "destructive",
     },
   }
 
@@ -228,27 +202,16 @@ function BulkActionDialog({
           <DialogDescription>{config.description}</DialogDescription>
         </DialogHeader>
         
-        {action === "tag" && (
-          <div className="py-4">
-            <Input
-              placeholder="Введите название тега"
-              value={tag}
-              onChange={(e) => setTag(e.target.value)}
-            />
-          </div>
-        )}
-        
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Отмена
           </Button>
           <Button
-            onClick={() => {
-              onConfirm(action === "tag" ? tag : undefined)
-              onOpenChange(false)
-            }}
-            disabled={action === "tag" && !tag.trim()}
+            variant={config.variant}
+            onClick={onConfirm}
+            disabled={isLoading}
           >
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Подтвердить
           </Button>
         </DialogFooter>
@@ -271,17 +234,44 @@ export default function OffersPage() {
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [reviewFilter, setReviewFilter] = React.useState<string>("all")
   
+  // Данные
+  const [offers, setOffers] = React.useState<AdminOffer[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  
   // Диалог редактирования
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [selectedOffer, setSelectedOffer] = React.useState<AdminOffer | null>(null)
   
   // Bulk action dialog
-  const [bulkAction, setBulkAction] = React.useState<"activate" | "deactivate" | "publish" | "draft" | "archive" | "tag" | null>(null)
+  const [bulkAction, setBulkAction] = React.useState<"activate" | "deactivate" | "publish" | "draft" | "archive" | "delete" | null>(null)
   const [bulkDialogOpen, setBulkDialogOpen] = React.useState(false)
+  const [bulkLoading, setBulkLoading] = React.useState(false)
+
+  // Загрузка данных
+  const fetchOffers = React.useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await fetch('/api/offers?status=all')
+      if (!response.ok) throw new Error('Failed to fetch offers')
+      const data = await response.json()
+      setOffers(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+      toast.error('Ошибка загрузки офферов')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    fetchOffers()
+  }, [fetchOffers])
 
   // Фильтрация данных
   const filteredData = React.useMemo(() => {
-    return adminOffers.filter((offer) => {
+    return offers.filter((offer) => {
       // Фильтр по поиску
       const matchesSearch = debouncedSearch === "" || 
         offer.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
@@ -300,7 +290,7 @@ export default function OffersPage() {
       
       return matchesSearch && matchesStatus && matchesReview
     })
-  }, [debouncedSearch, statusFilter, reviewFilter])
+  }, [offers, debouncedSearch, statusFilter, reviewFilter])
 
   // Получаем выбранные офферы
   const selectedOffers = React.useMemo(() => {
@@ -383,11 +373,6 @@ export default function OffersPage() {
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>{offer.slug}</span>
-              {offer.tags.map(tag => (
-                <Badge key={tag} variant="secondary" className="text-[10px] px-1 py-0">
-                  {tag}
-                </Badge>
-              ))}
             </div>
           </div>
         )
@@ -431,7 +416,7 @@ export default function OffersPage() {
       header: "Source",
       cell: ({ row }) => {
         return (
-          <span className="text-sm">{row.original.syncSource}</span>
+          <span className="text-sm">{row.original.syncSource || "Manual"}</span>
         )
       },
       size: 90,
@@ -535,26 +520,72 @@ export default function OffersPage() {
     setBulkDialogOpen(true)
   }
 
-  const handleBulkConfirm = (tag?: string) => {
-    const count = selectedOffers.length
-    const actionLabels: Record<string, string> = {
-      activate: "активировано",
-      deactivate: "деактивировано",
-      publish: "опубликовано",
-      draft: "переведено в черновики",
-      archive: "архивировано",
-      tag: `добавлен тег "${tag}"`,
+  const handleBulkConfirm = async () => {
+    if (!bulkAction) return
+    
+    setBulkLoading(true)
+    try {
+      const ids = selectedOffers.map(o => o.id)
+      
+      const response = await fetch('/api/offers/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: bulkAction, ids }),
+      })
+      
+      if (!response.ok) throw new Error('Bulk action failed')
+      
+      const result = await response.json()
+      
+      const actionLabels: Record<string, string> = {
+        activate: "активировано",
+        deactivate: "деактивировано",
+        publish: "опубликовано",
+        draft: "переведено в черновики",
+        archive: "архивировано",
+        delete: "удалено",
+      }
+      
+      toast.success("Массовое действие выполнено", {
+        description: `${result.affected} офферов ${actionLabels[bulkAction]}`,
+      })
+      
+      setRowSelection({})
+      setBulkDialogOpen(false)
+      fetchOffers() // Refresh data
+    } catch (err) {
+      toast.error("Ошибка выполнения действия")
+    } finally {
+      setBulkLoading(false)
     }
+  }
+
+  // Обработчик сохранения оффера
+  const handleOfferSave = async (data: any) => {
+    if (!selectedOffer) return
     
-    toast.success("Массовое действие выполнено", {
-      description: `${count} офферов ${actionLabels[bulkAction!]}`,
-    })
-    
-    setRowSelection({})
+    try {
+      const response = await fetch(`/api/offers/${selectedOffer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      
+      if (!response.ok) throw new Error('Failed to save')
+      
+      toast.success("Изменения сохранены", {
+        description: `Оффер "${data.name}" успешно обновлён`,
+      })
+      
+      setEditDialogOpen(false)
+      fetchOffers() // Refresh data
+    } catch (err) {
+      toast.error("Ошибка сохранения")
+    }
   }
 
   // Показывает требующие проверки офферы
-  const offersNeedingReview = adminOffers.filter(o => o.requiresReview).length
+  const offersNeedingReview = offers.filter(o => o.requiresReview).length
 
   return (
     <div className="space-y-6">
@@ -611,9 +642,9 @@ export default function OffersPage() {
                 <FileText className="mr-2 h-4 w-4" />
                 В черновики
               </Button>
-              <Button size="sm" variant="outline" onClick={() => handleBulkAction("tag")}>
-                <Tag className="mr-2 h-4 w-4" />
-                Тег
+              <Button size="sm" variant="outline" onClick={() => handleBulkAction("archive")}>
+                <Archive className="mr-2 h-4 w-4" />
+                Архив
               </Button>
             </div>
             <div className="ml-auto">
@@ -631,13 +662,13 @@ export default function OffersPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Офферы</h1>
           <p className="text-muted-foreground">
-            {filteredData.length} офферов из {adminOffers.length}
+            {isLoading ? 'Загрузка...' : `${filteredData.length} офферов из ${offers.length}`}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Sync
+          <Button variant="outline" size="sm" onClick={fetchOffers} disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Обновить
           </Button>
         </div>
       </div>
@@ -703,113 +734,141 @@ export default function OffersPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Ошибка */}
+          {error && (
+            <div className="text-center py-8 text-red-500">
+              <p>Ошибка: {error}</p>
+              <Button variant="outline" size="sm" onClick={fetchOffers} className="mt-2">
+                Попробовать снова
+              </Button>
+            </div>
+          )}
+          
+          {/* Загрузка */}
+          {isLoading && (
+            <div className="text-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+              <p className="mt-2 text-muted-foreground">Загрузка офферов...</p>
+            </div>
+          )}
+          
           {/* Таблица */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead 
-                          key={header.id}
-                          style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
-                      )
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => {
-                    const requiresReview = row.original.requiresReview
-                    return (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && "selected"}
-                        className={`cursor-pointer hover:bg-muted/50 ${
-                          requiresReview ? "bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100 dark:hover:bg-orange-900/30" : ""
-                        }`}
-                        onClick={() => handleRowClick(row.original)}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell 
-                            key={cell.id}
-                            onClick={(e) => {
-                              if (cell.column.id === "actions" || cell.column.id === "select") {
-                                e.stopPropagation()
-                              }
-                            }}
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
+          {!isLoading && !error && (
+            <>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => {
+                          return (
+                            <TableHead 
+                              key={header.id}
+                              style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
+                            >
+                              {header.isPlaceholder
+                                ? null
+                                : flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext()
+                                  )}
+                            </TableHead>
+                          )
+                        })}
                       </TableRow>
-                    )
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <Search className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          Офферы не найдены
-                        </span>
-                        {hasActiveFilters && (
-                          <Button variant="outline" size="sm" onClick={clearFilters}>
-                            Сбросить фильтры
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Пагинация */}
-          <div className="flex items-center justify-between space-x-2 py-4">
-            <div className="text-sm text-muted-foreground">
-              Показано {table.getRowModel().rows.length} из {filteredData.length}
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                Назад
-              </Button>
-              <div className="text-sm text-muted-foreground">
-                Страница {table.getState().pagination.pageIndex + 1} из{" "}
-                {table.getPageCount()}
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {table.getRowModel().rows?.length ? (
+                      table.getRowModel().rows.map((row) => {
+                        const requiresReview = row.original.requiresReview
+                        return (
+                          <TableRow
+                            key={row.id}
+                            data-state={row.getIsSelected() && "selected"}
+                            className={`cursor-pointer hover:bg-muted/50 ${
+                              requiresReview ? "bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100 dark:hover:bg-orange-900/30" : ""
+                            }`}
+                            onClick={() => handleRowClick(row.original)}
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell 
+                                key={cell.id}
+                                onClick={(e) => {
+                                  if (cell.column.id === "actions" || cell.column.id === "select") {
+                                    e.stopPropagation()
+                                  }
+                                }}
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        )
+                      })
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={columns.length}
+                          className="h-24 text-center"
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                            <Search className="h-8 w-8 text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              {offers.length === 0 ? 'Нет офферов в базе данных' : 'Офферы не найдены'}
+                            </span>
+                            {offers.length === 0 && (
+                              <Button variant="outline" size="sm" onClick={() => toast.info('Используйте seed-скрипт для добавления офферов')}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Добавить офферы
+                              </Button>
+                            )}
+                            {hasActiveFilters && (
+                              <Button variant="outline" size="sm" onClick={clearFilters}>
+                                Сбросить фильтры
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                Вперёд
-              </Button>
-            </div>
-          </div>
+
+              {/* Пагинация */}
+              <div className="flex items-center justify-between space-x-2 py-4">
+                <div className="text-sm text-muted-foreground">
+                  Показано {table.getRowModel().rows.length} из {filteredData.length}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                  >
+                    Назад
+                  </Button>
+                  <div className="text-sm text-muted-foreground">
+                    Страница {table.getState().pagination.pageIndex + 1} из{" "}
+                    {table.getPageCount()}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                  >
+                    Вперёд
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -818,6 +877,7 @@ export default function OffersPage() {
         offer={selectedOffer}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
+        onSave={handleOfferSave}
       />
 
       {/* Bulk Action Dialog */}
@@ -827,6 +887,7 @@ export default function OffersPage() {
         action={bulkAction}
         selectedCount={selectedOffers.length}
         onConfirm={handleBulkConfirm}
+        isLoading={bulkLoading}
       />
     </div>
   )
