@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Bold,
   Italic,
-  Strike,
+  Strikethrough,
   Code,
   Heading1,
   Heading2,
@@ -173,7 +173,7 @@ export function TipTapEditor({ content, onChange, placeholder }: TipTapEditorPro
           onClick={() => editor.chain().focus().toggleStrike().run()}
           title="Зачёркнутый"
         >
-          <Strike className="h-4 w-4" />
+          <Strikethrough className="h-4 w-4" />
         </Button>
         <Button
           type="button"
