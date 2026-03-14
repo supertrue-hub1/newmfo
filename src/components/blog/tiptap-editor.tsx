@@ -90,6 +90,8 @@ export function TipTapEditor({ content, onChange, placeholder }: TipTapEditorPro
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log('[TipTap] Uploading image:', file.name, 'size:', file.size, 'type:', file.type);
+
     const formData = new FormData();
     formData.append('file', file);
 
@@ -99,14 +101,26 @@ export function TipTapEditor({ content, onChange, placeholder }: TipTapEditorPro
         body: formData,
       });
 
+      console.log('[TipTap] Response status:', res.status);
+      
       const data = await res.json();
+      console.log('[TipTap] Response data:', data);
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Ошибка загрузки');
+      }
+
       if (data.url) {
+        console.log('[TipTap] Image uploaded successfully:', data.url);
         addImage(data.url);
       }
     } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Ошибка загрузки изображения');
+      console.error('[TipTap] Error uploading image:', error);
+      alert('Ошибка загрузки изображения: ' + (error instanceof Error ? error.message : 'Неизвестная ошибка'));
     }
+
+    // Reset input
+    e.target.value = '';
   };
 
   const insertFaq = () => {
