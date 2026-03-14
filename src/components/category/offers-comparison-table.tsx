@@ -27,7 +27,7 @@ interface OfferForTable {
   firstLoanRate?: number | null;
   baseRate: number;
   decisionTime: number;
-  approvalRate: number;
+  approvalRate?: number;
   features: string[];
   badCreditOk?: boolean;
   noCalls?: boolean;

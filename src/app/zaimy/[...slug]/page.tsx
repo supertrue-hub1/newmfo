@@ -158,6 +158,32 @@ async function getOffers() {
   }
 }
   
+// Форматирование оффера для компонентов
+function formatOffer(offer: Awaited<ReturnType<typeof db.loanOffer.findMany>>[0]) {
+  return {
+    id: offer.id,
+    name: offer.name,
+    slug: offer.slug,
+    logo: offer.logo,
+    rating: offer.rating,
+    minAmount: offer.minAmount,
+    maxAmount: offer.maxAmount,
+    minTerm: offer.minTerm || 1,
+    maxTerm: offer.maxTerm || 30,
+    firstLoanRate: offer.firstLoanRate,
+    baseRate: offer.baseRate || 0.8,
+    decisionTime: offer.decisionTime || 15,
+    approvalRate: offer.approvalRate || 85,
+    features: offer.tags?.map((t) => t.tag.slug) || [],
+    badCreditOk: offer.badCreditOk ?? false,
+    noCalls: offer.noCalls ?? false,
+    roundTheClock: offer.roundTheClock ?? false,
+    payoutMethods: offer.payoutMethods ? JSON.parse(offer.payoutMethods) : ['card'],
+    editorNote: offer.editorNote,
+    affiliateUrl: offer.affiliateUrl,
+  };
+}
+  
 export default async function DynamicSeoPage({ 
   params 
 }: { 
@@ -165,13 +191,10 @@ export default async function DynamicSeoPage({
 }) {
   const { slug } = await params;
   const parsed = parseSlug(slug);
-  const offers = await getOffers();
+  const rawOffers = await getOffers();
   
   // Форматируем офферы для компонентов
-  const formattedOffers = offers.map((offer) => ({
-    ...offer,
-    features: offer.tags?.map((t) => t.tag.slug) || [],
-  }));
+  const offers = rawOffers.map(formatOffer);
   
   // ============================================
   // КАТЕГОРИЯ (новый дизайн)
@@ -181,7 +204,7 @@ export default async function DynamicSeoPage({
     
     // Если есть конфиг — используем новый дизайн
     if (config) {
-      const topOffers = formattedOffers.slice(0, 3);
+      const topOffers = offers.slice(0, 3);
       
       const breadcrumb = [
         { name: 'Главная', url: 'https://cashpeek.ru/' },
@@ -217,7 +240,7 @@ export default async function DynamicSeoPage({
             <section id="offers" className="py-8 bg-white">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
                 <h2 className="text-xl font-bold text-foreground mb-4">Все предложения</h2>
-                <OffersComparisonTable offers={formattedOffers} />
+                <OffersComparisonTable offers={offers} />
               </div>
             </section>
             <HowToChoose steps={config.howToChoose} />
@@ -250,7 +273,7 @@ export default async function DynamicSeoPage({
           />
           <section className="py-8">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-              <OfferList offers={offers} showSort={true} />
+              <OfferList offers={rawOffers} showSort={true} />
             </div>
           </section>
         </main>
@@ -278,7 +301,7 @@ export default async function DynamicSeoPage({
           />
           <section className="py-8">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-              <OfferList offers={offers} showSort={true} />
+              <OfferList offers={rawOffers} showSort={true} />
             </div>
           </section>
         </main>
@@ -320,7 +343,7 @@ export default async function DynamicSeoPage({
           />
           <section className="py-8">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-              <OfferList offers={offers} loanTypeSlug={parsed.categorySlug} showSort={true} />
+              <OfferList offers={rawOffers} loanTypeSlug={parsed.categorySlug} showSort={true} />
             </div>
           </section>
           <CityStats cityName={city.name} citySlug={parsed.citySlug} />
@@ -351,7 +374,7 @@ export default async function DynamicSeoPage({
           />
           <section className="py-8">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-              <OfferList offers={offers} showSort={true} />
+              <OfferList offers={rawOffers} showSort={true} />
             </div>
           </section>
         </main>
@@ -381,7 +404,7 @@ export default async function DynamicSeoPage({
           />
           <section className="py-8">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-              <OfferList offers={offers} showSort={true} />
+              <OfferList offers={rawOffers} showSort={true} />
             </div>
           </section>
           <CityStats cityName={city.name} citySlug={parsed.citySlug} />

@@ -20,7 +20,7 @@ interface TopOffer {
   firstLoanRate?: number | null;
   baseRate: number;
   decisionTime: number;
-  approvalRate: number;
+  approvalRate?: number;
   features: string[];
   editorNote?: string | null;
   affiliateUrl?: string | null;
