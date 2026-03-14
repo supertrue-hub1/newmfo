@@ -4,7 +4,7 @@ import { Header, Footer } from '@/components/layout';
 import { db } from '@/lib/db';
 import { LOAN_CATEGORIES, CITIES, AMOUNTS, type LoanCategorySlug, type CitySlug } from '@/lib/seo/slugs';
 import { generateCategoryMetadata, generateBreadcrumb } from '@/lib/seo/metadata';
-import { OfferCard } from '@/components/home/offer-card';
+import { OfferCard } from '@/components/offers/offer-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, MapPin, CreditCard, Clock, Star, ArrowRight } from 'lucide-react';

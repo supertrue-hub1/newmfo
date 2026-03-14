@@ -3,7 +3,7 @@ import { Header, Footer } from '@/components/layout';
 import { db } from '@/lib/db';
 import { LOAN_CATEGORIES, CITIES } from '@/lib/seo/slugs';
 import { generateBreadcrumb } from '@/lib/seo/metadata';
-import { OfferCard } from '@/components/home/offer-card';
+import { OfferCard } from '@/components/offers/offer-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, CreditCard, MapPin, Clock, Star, ArrowRight } from 'lucide-react';
