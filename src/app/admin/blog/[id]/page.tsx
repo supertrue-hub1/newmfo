@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import {
   ArrowLeft,
   Save,
@@ -34,13 +36,14 @@ import {
   Link2,
   Code,
   Minus,
+  HelpCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { generateSlug, calculateReadingTime } from '@/lib/blog/utils';
 import type { BlogPost, BlogCategory, BlogAuthor } from '@/types/blog';
 
-// Rich Text Editor Component
-function RichTextEditor({ 
+// Simple HTML Editor with Toolbar
+function HtmlEditor({ 
   value, 
   onChange 
 }: { 
@@ -61,11 +64,24 @@ function RichTextEditor({
     
     onChange(newText);
     
-    // Restore cursor position
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
     }, 0);
+  };
+
+  const insertHeading = (level: 2 | 3) => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    const slug = selectedText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    
+    const html = `<h${level} id="${slug}">${selectedText}</h${level}>`;
+    const newText = value.substring(0, start) + html + value.substring(end);
+    onChange(newText);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,8 +99,128 @@ function RichTextEditor({
 
       const data = await res.json();
       if (data.url) {
-        insertText(`<img src="${data.url}" alt="Изображение" style="max-width: 100%; border-radius: 8px;" />`);
+        insertText(`<img src="${data.url}" alt="Изображение" style="max-width: 100%; border-radius: 8px; margin: 16px 0;" />`);
       }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Ошибка загрузки изображения');
+    }
+  };
+
+  const insertFaq = () => {
+    const faqHtml = `
+
+<!-- FAQ: [{"question":"Вопрос?","answer":"Ответ на вопрос."}] -->
+
+`;
+    insertText(faqHtml);
+  };
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex items-center gap-1 p-2 bg-slate-50 border-b flex-wrap">
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => insertText('<strong>', '</strong>')} title="Жирный">
+          <Bold className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => insertText('<em>', '</em>')} title="Курсив">
+          <Italic className="h-4 w-4" />
+        </Button>
+        
+        <Separator orientation="vertical" className="h-6 mx-1" />
+        
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => insertHeading(2)} title="Заголовок 2">
+          <Heading2 className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => insertHeading(3)} title="Заголовок 3">
+          <Heading3 className="h-4 w-4" />
+        </Button>
+        
+        <Separator orientation="vertical" className="h-6 mx-1" />
+        
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => insertText('<ul>\n<li>', '</li>\n</ul>')} title="Список">
+          <List className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => insertText('<ol>\n<li>', '</li>\n</ol>')} title="Нумерованный">
+          <ListOrdered className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => insertText('<blockquote>', '</blockquote>')} title="Цитата">
+          <Quote className="h-4 w-4" />
+        </Button>
+        
+        <Separator orientation="vertical" className="h-6 mx-1" />
+        
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => insertText('<a href="URL">', '</a>')} title="Ссылка">
+          <Link2 className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => insertText('<code>', '</code>')} title="Код">
+          <Code className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => insertText('\n<hr />\n')} title="Разделитель">
+          <Minus className="h-4 w-4" />
+        </Button>
+        
+        <Separator orientation="vertical" className="h-6 mx-1" />
+        
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={() => fileInputRef.current?.click()}>
+          <Upload className="h-4 w-4 mr-1" />
+          Картинка
+        </Button>
+        
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 text-primary" onClick={insertFaq} title="Вставить FAQ блок">
+          <HelpCircle className="h-4 w-4 mr-1" />
+          FAQ
+        </Button>
+        
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
+      </div>
+
+      {/* Editor */}
+      <textarea
+        ref={editorRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={`Напишите содержимое статьи в HTML формате...
+
+Примеры:
+<h2 id="zagolovok">Заголовок</h2>
+<p>Текст абзаца</p>
+<strong>жирный</strong>, <em>курсив</em>
+
+Для FAQ вставьте:
+<!-- FAQ: [{"question":"Вопрос?","answer":"Ответ."}] -->
+`}
+        className="w-full min-h-[500px] p-4 font-mono text-sm focus:outline-none resize-y bg-white"
+      />
+    </div>
+  );
+}
+
+// Preview Component
+function ContentPreview({ content }: { content: string }) {
+  return (
+    <div 
+      className="prose prose-slate max-w-none p-6 bg-white rounded-lg border min-h-[500px]
+        prose-headings:font-bold prose-headings:text-slate-900
+        prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4
+        prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-3
+        prose-p:text-slate-600 prose-p:leading-relaxed
+        prose-a:text-primary prose-a:underline
+        prose-strong:text-slate-900
+        prose-ul:text-slate-600 prose-ol:text-slate-600
+        prose-blockquote:border-l-primary prose-blockquote:bg-slate-50
+        prose-img:rounded-xl prose-img:shadow-sm
+      "
+      dangerouslySetInnerHTML={{ __html: content }}
+    />
+  );
+}
     } catch (error) {
       console.error('Error uploading image:', error);
     }
@@ -386,7 +522,7 @@ export default function AdminBlogEditorPage() {
                   <TabsTrigger value="preview">Предпросмотр</TabsTrigger>
                 </TabsList>
                 <TabsContent value="editor">
-                  <RichTextEditor
+                  <HtmlEditor
                     value={form.content}
                     onChange={(content) => setForm(prev => ({ ...prev, content }))}
                   />
