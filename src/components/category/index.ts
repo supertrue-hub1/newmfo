@@ -6,6 +6,6 @@ export { OffersComparisonTable } from './offers-comparison-table';
 export { HowToChoose } from './how-to-choose';
 export { WhoSuits } from './who-suits';
 export { SeoContent } from './seo-content';
-export { CategoryFaq } from './category-faq';
+export { CategoryFaq, generateFaqSchema } from './category-faq';
 export { InternalLinks } from './internal-links';
 export { TrustBlock } from './trust-block';

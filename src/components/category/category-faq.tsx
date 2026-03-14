@@ -14,27 +14,10 @@ import type { FaqItem } from '@/lib/category/category-config';
 interface CategoryFaqProps {
   items: FaqItem[];
   title?: string;
+  schemaJson?: string;
 }
 
-// Генерация FAQ Schema
-function generateFaqSchema(items: FaqItem[]) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: items.map((item) => ({
-      '@type': 'Question',
-      name: item.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: item.answer,
-      },
-    })),
-  };
-}
-
-export function CategoryFaq({ items, title = 'Часто задаваемые вопросы' }: CategoryFaqProps) {
-  const schema = generateFaqSchema(items);
-
+export function CategoryFaq({ items, title = 'Часто задаваемые вопросы', schemaJson }: CategoryFaqProps) {
   return (
     <section className="py-10 bg-white border-b border-border/50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
@@ -57,12 +40,22 @@ export function CategoryFaq({ items, title = 'Часто задаваемые в
           ))}
         </Accordion>
       </div>
-
-      {/* FAQ Schema */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-      />
     </section>
   );
+}
+
+// Генерация FAQ Schema (для server component)
+export function generateFaqSchema(items: FaqItem[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
+  };
 }

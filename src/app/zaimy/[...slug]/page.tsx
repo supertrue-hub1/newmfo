@@ -13,6 +13,7 @@ import {
   HowToChoose,
   WhoSuits,
   CategoryFaq,
+  generateFaqSchema,
   InternalLinks,
   TrustBlock,
 } from '@/components/category';
@@ -282,6 +283,10 @@ export default async function DynamicSeoPage({
               dangerouslySetInnerHTML={{ __html: seoContent }}
             />
             <CategoryFaq items={config.faq} />
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(generateFaqSchema(config.faq)) }}
+            />
             <InternalLinks currentCategory={parsed.categorySlug} />
           </main>
           <Footer />

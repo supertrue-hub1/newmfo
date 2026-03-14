@@ -12,14 +12,14 @@ interface SeoContentProps {
 }
 
 export function SeoContent({ content, title, className }: SeoContentProps) {
-  const [expanded, setExpanded] = React.useState(false);
+  const [expanded, setExpanded] = React.useState(true);
   const [mounted, setMounted] = React.useState(false);
   
   React.useEffect(() => {
     setMounted(true);
+    setExpanded(false);
   }, []);
 
-  // На мобильных по умолчанию свёрнут
   const showExpandButton = mounted && content.length > 300;
   const maxHeight = expanded || !showExpandButton ? 'none' : '200px';
 
