@@ -9,23 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, MapPin, CreditCard, Clock } from 'lucide-react';
 import Link from 'next/link';
-import { cache } from 'react';
 
-// Кэшируем запрос к БД
-const getLoansByCity = cache(async () => {
-  return db.loanOffer.findMany({
-    where: { status: 'published' },
-    orderBy: { rating: 'desc' },
-    take: 30,
-  });
-});
-  
-export const revalidate = 3600;
+// Принудительный динамический рендеринг
+export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  return Object.keys(CITIES).map(city => ({ city }));
-}
 
 export async function generateMetadata({ 
   params 
@@ -53,7 +40,18 @@ export default async function CityPage({
   }
   
   const city = CITIES[citySlug as CitySlug];
-  const offers = await getLoansByCity();
+  
+  // Получаем офферы
+  let offers = [];
+  try {
+    offers = await db.loanOffer.findMany({
+      where: { status: 'published' },
+      orderBy: { rating: 'desc' },
+      take: 30,
+    });
+  } catch (e) {
+    console.error('Failed to fetch offers:', e);
+  }
   
   const breadcrumb = [
     { name: 'Главная', url: '/' },

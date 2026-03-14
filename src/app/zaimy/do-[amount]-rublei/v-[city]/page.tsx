@@ -6,42 +6,12 @@ import { AMOUNTS, CITIES, type CitySlug } from '@/lib/seo/slugs';
 import { SeoPageHeader } from '@/components/seo/seo-page-header';
 import { OfferList } from '@/components/seo/offer-list';
 import { CityStats } from '@/components/seo/stats-block';
-import { RelatedLinks, SeoFooterLinks } from '@/components/seo/related-links';
+import { SeoFooterLinks } from '@/components/seo/related-links';
 import { FaqBlock } from '@/components/seo/faq-block';
 
-export const revalidate = 3600;
+// Принудительный динамический рендеринг
+export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
-
-// Генерируем статические параметры для топ-сумм и городов
-export async function generateStaticParams() {
-  const params = [];
-  const topAmounts = AMOUNTS.slice(0, 5);
-  const topCities = Object.keys(CITIES).slice(0, 10);
-  
-  for (const amount of topAmounts) {
-    for (const citySlug of topCities) {
-      params.push({ amount: amount.slug, city: citySlug });
-    }
-  }
-  
-  return params;
-}
-
-// Получаем данные страницы из БД
-async function getSeoPageData(amountSlug: string, citySlug: string) {
-  const seoPage = await db.seoPage.findFirst({
-    where: {
-      amountSlug,
-      city: { slug: citySlug },
-    },
-    include: {
-      city: true,
-      loanType: true,
-    },
-  });
-  
-  return seoPage;
-}
 
 export async function generateMetadata({ 
   params 
@@ -50,16 +20,6 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { amount, city } = await params;
   
-  const seoPage = await getSeoPageData(amount, city);
-  
-  if (seoPage) {
-    return {
-      title: seoPage.pageTitle,
-      description: seoPage.pageDescription || undefined,
-    };
-  }
-  
-  // Fallback
   const cityData = CITIES[city as CitySlug];
   const amountData = AMOUNTS.find(a => a.slug === amount);
   
@@ -87,21 +47,23 @@ export default async function AmountCityPage({
     notFound();
   }
   
-  // Получаем SEO-данные из БД
-  const seoPage = await getSeoPageData(amountSlug, citySlug);
-  
   // Получаем офферы
-  const offers = await db.loanOffer.findMany({
-    where: { 
-      status: 'published',
-      minAmount: { lte: amountData.value },
-    },
-    orderBy: { rating: 'desc' },
-    take: 20,
-  });
+  let offers = [];
+  try {
+    offers = await db.loanOffer.findMany({
+      where: { 
+        status: 'published',
+        minAmount: { lte: amountData.value },
+      },
+      orderBy: { rating: 'desc' },
+      take: 20,
+    });
+  } catch (e) {
+    console.error('Failed to fetch offers:', e);
+  }
   
-  const h1 = seoPage?.h1 || `Займы ${amountData.display} ${city.preposition}`;
-  const description = seoPage?.pageDescription || `Займы ${amountData.title} ${city.preposition}. Быстрое одобрение за 5 минут.`;
+  const h1 = `Займы ${amountData.display} ${city.preposition}`;
+  const description = `Займы ${amountData.title} ${city.preposition}. Быстрое одобрение за 5 минут.`;
   
   return (
     <div className="flex min-h-screen flex-col bg-white">

@@ -2,17 +2,13 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Header, Footer } from '@/components/layout';
 import { db } from '@/lib/db';
-import { AMOUNTS, CITIES, type CitySlug } from '@/lib/seo/slugs';
+import { AMOUNTS, CITIES } from '@/lib/seo/slugs';
 import { SeoPageHeader } from '@/components/seo/seo-page-header';
 import { OfferList } from '@/components/seo/offer-list';
-import { RelatedLinks } from '@/components/seo/related-links';
 
-export const revalidate = 3600;
+// Принудительный динамический рендеринг
+export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  return AMOUNTS.slice(0, 5).map(amount => ({ amount: amount.slug }));
-}
 
 export async function generateMetadata({ 
   params 
@@ -44,14 +40,20 @@ export default async function AmountPage({
     notFound();
   }
   
-  const offers = await db.loanOffer.findMany({
-    where: { 
-      status: 'published',
-      minAmount: { lte: amountData.value },
-    },
-    orderBy: { rating: 'desc' },
-    take: 20,
-  });
+  // Получаем офферы
+  let offers = [];
+  try {
+    offers = await db.loanOffer.findMany({
+      where: { 
+        status: 'published',
+        minAmount: { lte: amountData.value },
+      },
+      orderBy: { rating: 'desc' },
+      take: 20,
+    });
+  } catch (e) {
+    console.error('Failed to fetch offers:', e);
+  }
   
   const h1 = `Займы ${amountData.display}`;
   const description = `Подберите займ ${amountData.title} от проверенных МФО. Быстрое онлайн-оформление, деньги на карту за 15 минут.`;
