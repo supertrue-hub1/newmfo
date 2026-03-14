@@ -261,25 +261,17 @@ export default async function BlogPostPage({
 
         {/* Content */}
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-12">
-          <div className="grid gap-12 lg:grid-cols-[220px_1fr_320px]">
-            {/* TOC Sidebar - Left */}
-            <aside className="hidden lg:block">
-              <div className="sticky top-24">
-                <TableOfContents items={headings} />
-                
-                {/* Back to blog */}
-                <Link 
-                  href="/blog"
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mt-8"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Все статьи
-                </Link>
-              </div>
-            </aside>
-
+          <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
             {/* Article Content */}
             <article>
+              {/* Table of Contents - Inside article on mobile */}
+              {headings.length > 0 && (
+                <div className="lg:hidden mb-8 p-4 bg-slate-50 rounded-lg">
+                  <h3 className="font-semibold mb-3 text-slate-900">Содержание</h3>
+                  <TableOfContents items={headings} />
+                </div>
+              )}
+              
               {/* Featured Image */}
               {post.featuredImage && (
                 <div className="relative aspect-video rounded-xl overflow-hidden mb-8">
@@ -341,8 +333,25 @@ export default async function BlogPostPage({
               )}
             </article>
 
-            {/* Offers Sidebar - Right */}
-            <aside className="hidden lg:block">
+            {/* Right Sidebar */}
+            <aside className="space-y-6">
+              {/* Table of Contents - Desktop */}
+              {headings.length > 0 && (
+                <div className="hidden lg:block sticky top-24">
+                  <TableOfContents items={headings} />
+                  
+                  {/* Back to blog */}
+                  <Link 
+                    href="/blog"
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mt-8"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Все статьи
+                  </Link>
+                </div>
+              )}
+              
+              {/* Popular Offers */}
               <PopularOffersSidebar offers={transformedOffers} />
             </aside>
           </div>
