@@ -7,10 +7,6 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CitySelector } from '../header/city-selector';
 
-// В JSX Header (nav/flex)
-<CitySelector />
-
-
 interface HeaderProps {
   className?: string;
 }
@@ -139,7 +135,8 @@ export function Header({ className }: HeaderProps) {
         </nav>
 
         {/* Desktop CTA */}
-        <div className="hidden md:flex md:items-center md:gap-3">
+        <div className="hidden md:flex md:items-center md:gap-2">
+          <CitySelector />
           <ThemeToggle />
           <Button asChild variant="outline" className="border-border text-foreground hover:bg-accent hover:text-accent-foreground">
             <a href="/cabinet">
@@ -151,6 +148,7 @@ export function Header({ className }: HeaderProps) {
 
         {/* Mobile menu button */}
         <div className="flex md:hidden items-center gap-2">
+          <CitySelector />
           <ThemeToggle />
           <button
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-border hover:bg-accent transition-colors"

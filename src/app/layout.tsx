@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/layout/theme-provider";
+import { CityProvider } from "@/contexts/city-context";
+import { CityConfirmation } from "@/components/geo/city-confirmation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,8 +52,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
+          <CityProvider>
+            {children}
+            <CityConfirmation />
+            <Toaster />
+          </CityProvider>
         </ThemeProvider>
       </body>
     </html>
