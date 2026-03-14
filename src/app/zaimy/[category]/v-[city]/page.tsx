@@ -49,10 +49,20 @@ export default async function CategoryCityPage({
 }) {
   const { category: categorySlug, city: citySlug } = await params;
   
+  console.log('[CategoryCityPage] Request:', { categorySlug, citySlug });
+  
   const category = LOAN_CATEGORIES[categorySlug as LoanCategorySlug];
   const city = CITIES[citySlug as CitySlug];
   
+  console.log('[CategoryCityPage] Lookup:', { 
+    category: category?.name || 'NOT FOUND', 
+    city: city?.name || 'NOT FOUND',
+    availableCategories: Object.keys(LOAN_CATEGORIES),
+    availableCities: Object.keys(CITIES)
+  });
+  
   if (!category || !city) {
+    console.log('[CategoryCityPage] NOT FOUND - calling notFound()');
     notFound();
   }
   
