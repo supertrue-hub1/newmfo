@@ -35,8 +35,8 @@ function transliterate(text: string): string {
     'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
     'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
     'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
-    'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
-    ' ': '-', 'ё': 'yo',
+    'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya', 'ё': 'yo',
+    ' ': '-',
   };
   
   return text.toLowerCase().split('').map(char => ru[char] || char).join('');
@@ -48,20 +48,20 @@ function generateCitySlug(cityName: string): string {
 }
 
 // Парсинг суммы из строки "1000 рублей" -> 1000
-function parseAmount(amountStr: string): { value: number; slug: string } {
+function parseAmount(amountStr: string): { value: number | null; slug: string | null } {
   const match = amountStr.match(/(\d+)/);
-  const value = match ? parseInt(match[1]) : 0;
-  return { value, slug: value.toString() };
+  const value = match ? parseInt(match[1]) : null;
+  return { value, slug: value ? value.toString() : null };
 }
 
 // Парсинг срока из строки "на 7 дней" -> { days: 7, slug: "7-dney" }
-function parseTerm(termStr: string): { days: number; slug: string } {
+function parseTerm(termStr: string): { days: number | null; slug: string | null } {
   const dayMatch = termStr.match(/на\s*(\d+)\s*день/i);
   const monthMatch = termStr.match(/на\s*(\d+)\s*месяц/i);
   const yearMatch = termStr.match(/на\s*(\d+)\s*год/i);
   
-  let days = 7;
-  let slug = '7-dney';
+  let days: number | null = null;
+  let slug: string | null = null;
   
   if (dayMatch) {
     days = parseInt(dayMatch[1]);
