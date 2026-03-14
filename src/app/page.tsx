@@ -18,6 +18,21 @@ export const revalidate = 0;
 
 // Transform DB offer to frontend Offer type
 function transformOffer(offer: any): Offer {
+  // Безопасный парсинг JSON полей
+  const parseJsonArray = (value: unknown, defaultValue: string[] = []): string[] => {
+    if (!value) return defaultValue;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : defaultValue;
+      } catch {
+        return defaultValue;
+      }
+    }
+    return defaultValue;
+  };
+
   return {
     id: offer.id,
     name: offer.name,
@@ -26,24 +41,24 @@ function transformOffer(offer: any): Offer {
     rating: offer.rating,
     minAmount: offer.minAmount,
     maxAmount: offer.maxAmount,
-    minTerm: offer.minTerm,
-    maxTerm: offer.maxTerm,
-    baseRate: offer.baseRate,
+    minTerm: offer.minTerm || 1,
+    maxTerm: offer.maxTerm || 30,
+    baseRate: offer.baseRate || 0.8,
     firstLoanRate: offer.firstLoanRate ?? undefined,
-    decisionTime: offer.decisionTime,
-    approvalRate: offer.approvalRate,
-    payoutMethods: offer.payoutMethods ? JSON.parse(offer.payoutMethods) : [],
-    features: offer.features ? JSON.parse(offer.features) : [],
-    badCreditOk: offer.badCreditOk,
-    noCalls: offer.noCalls,
-    roundTheClock: offer.roundTheClock,
-    minAge: offer.minAge,
-    documents: offer.documents ? JSON.parse(offer.documents) : ['passport'],
-    editorNote: offer.customDescription || undefined,
+    decisionTime: offer.decisionTime || 15,
+    approvalRate: offer.approvalRate || 85,
+    payoutMethods: parseJsonArray(offer.payoutMethods, ['card']) as import('@/types/offer').PayoutMethod[],
+    features: parseJsonArray(offer.features, ['online_approval']) as import('@/types/offer').OfferFeature[],
+    badCreditOk: offer.badCreditOk ?? false,
+    noCalls: offer.noCalls ?? false,
+    roundTheClock: offer.roundTheClock ?? false,
+    minAge: offer.minAge || 18,
+    documents: parseJsonArray(offer.documents, ['passport']) as import('@/types/offer').DocumentRequirement[],
+    editorNote: offer.customDescription || offer.editorNote || undefined,
     affiliateUrl: offer.affiliateUrl || '#',
-    isFeatured: offer.isFeatured,
-    isNew: offer.isNew,
-    isPopular: offer.isPopular,
+    isFeatured: offer.isFeatured ?? false,
+    isNew: offer.isNew ?? false,
+    isPopular: offer.isPopular ?? false,
   };
 }
 

@@ -160,6 +160,21 @@ async function getOffers() {
   
 // Форматирование оффера для компонентов
 function formatOffer(offer: Awaited<ReturnType<typeof db.loanOffer.findMany>>[0]): import('@/types/offer').Offer {
+  // Безопасный парсинг JSON полей
+  const parseJsonArray = (value: unknown): string[] => {
+    if (!value) return ['passport'];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : ['passport'];
+      } catch {
+        return ['passport'];
+      }
+    }
+    return ['passport'];
+  };
+
   return {
     id: offer.id,
     name: offer.name,
@@ -185,14 +200,14 @@ function formatOffer(offer: Awaited<ReturnType<typeof db.loanOffer.findMany>>[0]
         'one-document': 'one_document',
         'loyalty-program': 'loyalty_program',
       };
-      return slugToFeature[t.tag.slug] || 'online_approval';
+      return slugToFeature[t.tag.slug];
     }).filter(Boolean) || ['online_approval'],
-    payoutMethods: offer.payoutMethods ? JSON.parse(offer.payoutMethods) : ['card'],
+    payoutMethods: parseJsonArray(offer.payoutMethods) as import('@/types/offer').PayoutMethod[],
     badCreditOk: offer.badCreditOk ?? false,
     noCalls: offer.noCalls ?? false,
     roundTheClock: offer.roundTheClock ?? false,
     minAge: offer.minAge || 18,
-    documents: offer.documents ? JSON.parse(offer.documents) : ['passport'],
+    documents: parseJsonArray(offer.documents) as import('@/types/offer').DocumentRequirement[],
     editorNote: offer.editorNote || offer.customDescription || undefined,
     affiliateUrl: offer.affiliateUrl || '#',
     isFeatured: offer.isFeatured ?? false,
