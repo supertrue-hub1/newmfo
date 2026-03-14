@@ -17,23 +17,6 @@ const getLoansByCity = cache(async () => {
     where: { status: 'published' },
     orderBy: { rating: 'desc' },
     take: 30,
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      logo: true,
-      rating: true,
-      minAmount: true,
-      maxAmount: true,
-      minTerm: true,
-      maxTerm: true,
-      baseRate: true,
-      firstLoanRate: true,
-      decisionTime: true,
-      approvalRate: true,
-      features: true,
-      customDescription: true,
-    },
   });
 });
   
