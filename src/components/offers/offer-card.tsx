@@ -129,6 +129,11 @@ export function OfferCard({ offer, className, featured = false }: OfferCardProps
     return `${Math.floor(minutes / 60)} ч`;
   };
 
+  // Безопасное получение массивов
+  const documents = Array.isArray(offer.documents) ? offer.documents : ['passport'];
+  const features = Array.isArray(offer.features) ? offer.features : [];
+  const payoutMethods = Array.isArray(offer.payoutMethods) ? offer.payoutMethods : ['card'];
+
   return (
     <>
       <Card
@@ -199,7 +204,7 @@ export function OfferCard({ offer, className, featured = false }: OfferCardProps
 
           {/* Special conditions badges */}
           <div className="mb-4 flex flex-wrap gap-1.5">
-            {offer.features.slice(0, 3).map((feature) => {
+            {features.slice(0, 3).map((feature) => {
               const config = featureLabels[feature];
               if (!config) return null;
               
@@ -242,7 +247,7 @@ export function OfferCard({ offer, className, featured = false }: OfferCardProps
                 <span className="hidden sm:inline">24/7</span>
               </div>
             )}
-            {offer.payoutMethods.includes('card') && (
+            {payoutMethods.includes('card') && (
               <div className="flex items-center gap-1 text-xs" title="На карту">
                 <CreditCard className="h-4 w-4" />
                 <span className="hidden sm:inline">На карту</span>
@@ -333,7 +338,7 @@ export function OfferCard({ offer, className, featured = false }: OfferCardProps
               <div>
                 <h4 className="font-medium text-foreground mb-2">Особенности</h4>
                 <div className="flex flex-wrap gap-2">
-                  {offer.features.map((feature) => {
+                  {features.map((feature) => {
                     const config = featureLabels[feature];
                     if (!config) return null;
                     return (
@@ -422,7 +427,7 @@ export function OfferCard({ offer, className, featured = false }: OfferCardProps
                 </div>
                 <div className="flex justify-between py-2 border-b border-border">
                   <span className="text-muted-foreground">Документы</span>
-                  <span className="font-medium">{offer.documents.map(d => {
+                  <span className="font-medium">{documents.map(d => {
                     const labels: Record<string, string> = { passport: 'Паспорт', inn: 'ИНН', snils: 'СНИЛС', driver_license: 'ВУ' };
                     return labels[d] || d;
                   }).join(', ')}</span>
