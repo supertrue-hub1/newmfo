@@ -15,6 +15,7 @@ import {
   RefreshCw,
   LogOut,
   User,
+  BookOpen,
 } from "lucide-react"
 
 import {
@@ -54,6 +55,12 @@ const mainNavItems = [
     url: "/admin/offers",
     icon: CreditCard,
     badge: "8",
+  },
+  {
+    title: "Блог",
+    url: "/admin/blog",
+    icon: BookOpen,
+    badge: null,
   },
   {
     title: "Синхронизация",
