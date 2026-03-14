@@ -17,12 +17,11 @@ const navLinks = [
 ];
 
 const loansSubMenu = [
-  { href: '/zaimy', label: 'Все займы', icon: Smartphone, description: 'Сравнить все предложения' },
-  { href: '/zaimy/onlain', label: 'Займы онлайн', icon: Smartphone, description: 'Быстрое оформление онлайн' },
-  { href: '/zaimy/na-kartu', label: 'Займы на карту', icon: CardIcon, description: 'Мгновенное зачисление' },
-  { href: '/zaimy/bez-otkaza', label: 'Займы без отказа', icon: CheckCircle, description: 'Высокий процент одобрения' },
-  { href: '/zaimy/bez-proverki-ki', label: 'Займы с плохой КИ', icon: AlertCircle, description: 'Без проверки кредитной истории' },
-  { href: '/zaimy/bez-procentov', label: 'Займы без процентов', icon: Percent, description: '0% для новых клиентов' },
+  { href: '/zaimy', label: 'Все займы', icon: Smartphone },
+  { href: '/zaimy/na-kartu', label: 'На карту', icon: CardIcon },
+  { href: '/zaimy/bez-otkaza', label: 'Без отказа', icon: CheckCircle },
+  { href: '/zaimy/bez-proverki-ki', label: 'С плохой КИ', icon: AlertCircle },
+  { href: '/zaimy/bez-procentov', label: 'Без процентов', icon: Percent },
 ];
 
 // Simple theme toggle button
@@ -106,18 +105,15 @@ export function Header({ className }: HeaderProps) {
             {/* Dropdown Content */}
             {loansMenuOpen && (
               <div className="absolute top-full left-0 pt-2">
-                <div className="w-64 rounded-xl border border-border bg-background shadow-lg p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="w-48 rounded-xl border border-border bg-background shadow-lg p-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
                   {loansSubMenu.map((item) => (
                     <a
                       key={item.href}
                       href={item.href}
-                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent transition-colors cursor-pointer"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-accent transition-colors cursor-pointer text-sm"
                     >
-                      <item.icon className="h-5 w-5 mt-0.5 text-primary flex-shrink-0" />
-                      <div>
-                        <div className="font-medium text-foreground">{item.label}</div>
-                        <div className="text-xs text-muted-foreground">{item.description}</div>
-                      </div>
+                      <item.icon className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="text-foreground">{item.label}</span>
                     </a>
                   ))}
                 </div>
@@ -179,7 +175,7 @@ export function Header({ className }: HeaderProps) {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                  className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
                 >
                   <item.icon className="h-4 w-4 text-primary" />
                   {item.label}
