@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
@@ -36,7 +37,7 @@ import {
 import { formatPostDate } from '@/lib/blog/utils';
 import type { BlogPost, BlogCategory } from '@/types/blog';
 
-export default function AdminBlogPage() {
+function AdminBlogContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const categoryFilter = searchParams.get('category');
@@ -309,5 +310,17 @@ export default function AdminBlogPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function AdminBlogPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <AdminBlogContent />
+    </Suspense>
   );
 }

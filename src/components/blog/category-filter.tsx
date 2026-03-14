@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -11,7 +12,7 @@ interface CategoryFilterProps {
   className?: string;
 }
 
-export function CategoryFilter({ categories, className }: CategoryFilterProps) {
+function CategoryFilterContent({ categories, className }: CategoryFilterProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentCategory = searchParams.get('category');
@@ -50,5 +51,13 @@ export function CategoryFilter({ categories, className }: CategoryFilterProps) {
         </Link>
       ))}
     </div>
+  );
+}
+
+export function CategoryFilter({ categories, className }: CategoryFilterProps) {
+  return (
+    <Suspense fallback={<div className="flex flex-wrap gap-2"><div className="px-4 py-2 rounded-full bg-muted animate-pulse">Загрузка...</div></div>}>
+      <CategoryFilterContent categories={categories} className={className} />
+    </Suspense>
   );
 }
