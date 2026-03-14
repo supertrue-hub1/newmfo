@@ -16,21 +16,9 @@ export const revalidate = 3600;
 // Динамические параметры - не генерировать все страницы статически
 export const dynamicParams = true;
 
-// Генерируем только топ-50 страниц при build
+// Не генерируем страницы при build - только по запросу
 export async function generateStaticParams() {
-  const params = [];
-  
-  // Топ-10 категорий × топ-5 городов = 50 страниц
-  const topCategories = Object.keys(LOAN_CATEGORIES).slice(0, 10);
-  const topCities = Object.keys(CITIES).slice(0, 5);
-  
-  for (const categorySlug of topCategories) {
-    for (const citySlug of topCities) {
-      params.push({ category: categorySlug, city: citySlug });
-    }
-  }
-  
-  return params;
+  return [];
 }
 
 export async function generateMetadata({ 
