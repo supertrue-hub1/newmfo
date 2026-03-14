@@ -49,3 +49,8 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# SEO data (large files)
+/seo/*.csv
+/seo/*.json
+/seo/*.zip
