@@ -4,7 +4,7 @@ import { Header, Footer } from '@/components/layout';
 import { db } from '@/lib/db';
 import { CITIES, type CitySlug } from '@/lib/seo/slugs';
 import { generateCityMetadata, generateBreadcrumb } from '@/lib/seo/metadata';
-import { OfferCard } from '@/components/offers/offer-card';
+import { SimpleOfferCard } from '@/lib/adapters/offer-adapter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, MapPin, CreditCard, Clock, Star } from 'lucide-react';
@@ -113,7 +113,7 @@ export default async function CityPage({
             <div className="space-y-4">
               {offers.length > 0 ? (
                 offers.map(offer => (
-                  <OfferCard key={offer.id} offer={offer} />
+                  <SimpleOfferCard key={offer.id} offer={offer} />
                 ))
               ) : (
                 <div className="text-center py-12">

@@ -4,7 +4,7 @@ import { Header, Footer } from '@/components/layout';
 import { db } from '@/lib/db';
 import { LOAN_CATEGORIES, CITIES, AMOUNTS, type LoanCategorySlug, type CitySlug } from '@/lib/seo/slugs';
 import { generateCategoryMetadata, generateCanonicalUrl, generateBreadcrumb } from '@/lib/seo/metadata';
-import { OfferCard } from '@/components/offers/offer-card';
+import { SimpleOfferCard } from '@/lib/adapters/offer-adapter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, MapPin, CreditCard, Clock, Star, ArrowRight } from 'lucide-react';
@@ -187,7 +187,7 @@ export default async function CategoryPage({
               <div className="space-y-4">
                 {offers.length > 0 ? (
                   offers.map(offer => (
-                    <OfferCard key={offer.id} offer={offer} />
+                    <SimpleOfferCard key={offer.id} offer={offer} />
                   ))
                 ) : (
                   <div className="text-center py-12">
